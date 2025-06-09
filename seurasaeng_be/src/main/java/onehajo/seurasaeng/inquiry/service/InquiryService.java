@@ -63,7 +63,7 @@ public class InquiryService {
                 .collect(Collectors.toList());
     }
 
-    // 문의 상세 조회
+    // 문의 상세 조회 - 사용자
     public InquiryDetailResDTO getInquiryDetail(Long id, Long user_id) {
         Inquiry inquiry = validateInquiryExists(id);
 
@@ -73,6 +73,17 @@ public class InquiryService {
         AnswerResDTO answerDTO = findAnswerByInquiry(inquiry);
 
         return buildInquiryDetailResponse(inquiry, user_id, answerDTO);
+    }
+
+    // 문의 상세 조회 - 관리자
+    public InquiryDetailResDTO getAdminInquiryDetail(Long id, Long manager_id) {
+        Inquiry inquiry = validateInquiryExists(id);
+
+        validateManagerExists(manager_id);
+
+        AnswerResDTO answerDTO = findAnswerByInquiry(inquiry);
+
+        return buildInquiryDetailResponse(inquiry, inquiry.getUser().getId(), answerDTO);
     }
 
     // 문의 삭제
