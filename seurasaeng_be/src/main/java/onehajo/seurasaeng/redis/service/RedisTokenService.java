@@ -21,9 +21,14 @@ public class RedisTokenService {
         redisTemplate.opsForValue().set(TOKEN_PREFIX + id, token);
     }
 
-    // 토큰 조회
+    // 토큰 조회(id)
     public String getToken(long id) {
         return redisTemplate.opsForValue().get(TOKEN_PREFIX + id);
+    }
+
+    // 토큰 조회(email)
+    public String getTokenEmail(String email) {
+        return redisTemplate.opsForValue().get(TOKEN_PREFIX + email);
     }
 
     // 토큰 삭제 (로그아웃 등)
