@@ -3,6 +3,7 @@ package onehajo.seurasaeng.user.service;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.entity.Shuttle;
 import onehajo.seurasaeng.entity.User;
 import onehajo.seurasaeng.qr.exception.UserNotFoundException;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class UserService {
 
@@ -65,14 +67,14 @@ public class UserService {
         userRepository.save(user);
         userRepository.flush();
 
-        String token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail());
+        String token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail(), request.getRole());
         redisTokenService.saveToken(user.getId(), token, jwtUtil.getExpiration());
 
         return token;
     }
 
     @Transactional
-    public String loginUser(LoginReqDTO request) {
+    public String[] loginUser(LoginReqDTO request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
@@ -80,10 +82,15 @@ public class UserService {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
-        String token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail());
-        redisTokenService.saveToken(user.getId(), token, jwtUtil.getExpiration());
+        String[] result = new String[2];
+        String token = redisTokenService.getToken(user.getId());
+        result[0] = token;
+        result[1] = jwtUtil.getRoleFromToken(token);
 
-        return token; // ✅ 컨트롤러에서 Authorization 헤더로 설정
+        log.info(result[0]);
+        log.info(result[1]);
+
+        return result; // ✅ 컨트롤러에서 Authorization 헤더로 설정
     }
 
     public String validateDuplicateUserEmail(String email) {
@@ -98,7 +105,7 @@ public class UserService {
     public String remakeToken(AutoLoginReqDTO request) {
         redisTokenService.deleteToken(request.getId());
 
-        String token = jwtUtil.generateToken(request.getId(), request.getName(), request.getPassword());
+        String token = jwtUtil.generateToken(request.getId(), request.getName(), request.getPassword(), request.getRole());
         redisTokenService.saveToken(request.getId(), token, jwtUtil.getExpiration());
 
         return token;
