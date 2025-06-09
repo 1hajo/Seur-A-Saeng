@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.qr.dto.ValidUserResDTO;
 import onehajo.seurasaeng.qr.service.QRService;
+import onehajo.seurasaeng.util.JwtUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RequestMapping("/api/users/me/qr")
 public class QRController {
     private final QRService qrService;
+    private final JwtUtil jwtUtil;
 
     // QR 생성 test
     @GetMapping("/generate/test")
@@ -32,12 +34,15 @@ public class QRController {
         return new ResponseEntity<>(headers, HttpStatus.OK);
     }
 
+    // QR 조회
     @GetMapping
-    public ResponseEntity<?> getQRByUserId(@RequestParam Long user_id) {
+    public ResponseEntity<?> getQRByUserId(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        Long user_id = jwtUtil.getIdFromToken(token);
+
         String base64Image = qrService.getQRCodeByUserId(user_id);
 
-        Map<String, String> response = new HashMap<>();
-        response.put("qr_code", base64Image);
+        Map<String, String> response = Map.of("qr_code", base64Image);
 
         return ResponseEntity.ok(response);
     }
