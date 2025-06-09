@@ -39,7 +39,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/signup", "/api/users/login",
                                 "/api/users/verify-email", "/api/users/auto-login",
                                 "/api/users/email", "/api/users/forgot-password",
-                                "/api/users/me", "/ws/**", "/api/users/me/qr/valid",
+                                "/api/users/me", "/ws/**", "/v3/api-docs/**",
+                                "/swagger-ui.html", "/swagger-ui/**", "/api/users/me/qr/valid",
                                 "/api/shuttle/count/*").permitAll()
                         .anyRequest().authenticated()
                 )
