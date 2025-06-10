@@ -14,4 +14,6 @@ public class MyPageResDTO {
     private String name;
     private String email;
     private String image;
+    long favorites_work_id;
+    long favorites_home_id;
 }

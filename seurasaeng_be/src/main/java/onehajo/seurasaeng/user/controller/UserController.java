@@ -17,8 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -44,16 +42,16 @@ public class UserController {
 
     @Transactional
     @PostMapping("/signup")
-    public ResponseEntity<String> register(@RequestBody SignUpReqDTO request) throws Exception {
-        log.info("회원가입 시도");
-        String token = "token";
+    public ResponseEntity<?> register(@RequestBody SignUpReqDTO request) throws Exception {
+        LoginResDTO loginResDTO = null;
         if (Objects.equals(request.getRole(), "user")){
-            token = userService.registerUser(request);
+            loginResDTO = userService.registerUser(request);
         }
         else if (Objects.equals(request.getRole(), "admin")){
-            token = userService.registerAdmin(request);
+            loginResDTO = userService.registerAdmin(request);
         }
-        return ResponseEntity.ok(token);
+
+        return ResponseEntity.ok(loginResDTO);
     }
 
     @PostMapping("/verify-email")
@@ -69,32 +67,26 @@ public class UserController {
         String code = mailService.joinEmail(email);
         log.info("이메일 인증 코드 전송");
 
-        return new ResponseEntity<String>(code, HttpStatus.OK);
+        return new ResponseEntity<>(code, HttpStatus.OK);
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginReqDTO request) {
-        String[] str = new String[2];
+        LoginResDTO loginResDTO;
+
         Optional<User> user = userRepository.findByEmail(request.getEmail());
         if (user.isPresent()) {
-            str = userService.loginUser(request);
+            loginResDTO = userService.loginUser(request);
         }
         else {
             Optional<Manager> manager = managerRepository.findByEmail(request.getEmail());
             if (manager.isPresent()) {
-                str = userService.loginAdmin(request);
+                loginResDTO = userService.loginAdmin(request);
             }
             throw new RuntimeException("사용자를 찾을 수 없습니다.");
         }
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "로그인 성공");
-        response.put("token", str[0]);
-        response.put("role", str[1]); // str[1] 포함
-
-        return ResponseEntity.ok()
-                //.header("Authorization", "Bearer " + str[0]) // ✅ JWT를 헤더에 포함
-                .body(response); // 혹은 사용자 정보 등 추가 가능
+        return ResponseEntity.ok(loginResDTO);
     }
 
     @GetMapping("/auto-login")
@@ -120,14 +112,14 @@ public class UserController {
     public ResponseEntity<?> myPage(HttpServletRequest request) {
         MyPageResDTO myPageResDTO = userService.getMyUsers(request);
 
-        return new ResponseEntity<MyPageResDTO>(myPageResDTO, HttpStatus.OK);
+        return new ResponseEntity<>(myPageResDTO, HttpStatus.OK);
     }
 
     @PatchMapping("/me")
     public ResponseEntity<?> updateUser(HttpServletRequest request, @RequestBody MyInfoReqDTO myInfoReqDTO) {
         MyInfoResDTO myInfoResDTO = userService.getMyInfo(request, myInfoReqDTO);
 
-        return new ResponseEntity<MyInfoResDTO>(myInfoResDTO, HttpStatus.OK);
+        return new ResponseEntity<>(myInfoResDTO, HttpStatus.OK);
     }
 
     @GetMapping("/me/preferences")

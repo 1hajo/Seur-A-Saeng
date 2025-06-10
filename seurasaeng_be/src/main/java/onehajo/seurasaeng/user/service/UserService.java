@@ -49,7 +49,7 @@ public class UserService {
     }
 
     @Transactional
-    public String registerUser(SignUpReqDTO request) throws Exception {
+    public LoginResDTO registerUser(SignUpReqDTO request) throws Exception {
         // 이메일 도메인 검사
         String email = request.getEmail();
         if (!email.endsWith("@gmail.com")) {
@@ -79,11 +79,18 @@ public class UserService {
 
         redisTokenService.saveToken(user.getId(), token, jwtUtil.getExpiration());
 
-        return token;
+        return LoginResDTO.builder()
+                .token(token)
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .image(user.getImage())
+                .role("user")
+                .build();
     }
 
     @Transactional
-    public String registerAdmin(SignUpReqDTO request) {
+    public LoginResDTO registerAdmin(SignUpReqDTO request) {
         // 이메일 도메인 검사
         String email = request.getEmail();
         if (!email.endsWith("@gmail.com")) {
@@ -105,11 +112,16 @@ public class UserService {
         String token = jwtUtil.generateTokenAdmin(manager.getId(), manager.getEmail(), request.getRole());
         redisTokenService.saveToken(manager.getId(), token, jwtUtil.getExpiration());
 
-        return token;
+        return LoginResDTO.builder()
+                .token(token)
+                .id(manager.getId())
+                .email(manager.getEmail())
+                .role("admin")
+                .build();
     }
 
     @Transactional
-    public String[] loginUser(LoginReqDTO request) {
+    public LoginResDTO loginUser(LoginReqDTO request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
@@ -122,18 +134,18 @@ public class UserService {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
-        String[] result = new String[2];
-        result[0] = token;
-        result[1] = jwtUtil.getRoleFromToken(token);
-
-        log.info(result[0]);
-        log.info(result[1]);
-
-        return result; // ✅ 컨트롤러에서 Authorization 헤더로 설정
+        return LoginResDTO.builder()
+                .token(token)
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .image(user.getImage())
+                .role("user")
+                .build();
     }
 
     @Transactional
-    public String[] loginAdmin(LoginReqDTO request) {
+    public LoginResDTO loginAdmin(LoginReqDTO request) {
         Manager manager = managerRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("관리자를 찾을 수 없습니다."));
 
@@ -146,14 +158,12 @@ public class UserService {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
-        String[] result = new String[2];
-        result[0] = token;
-        result[1] = jwtUtil.getRoleFromToken(token);
-
-        log.info(result[0]);
-        log.info(result[1]);
-
-        return result; // ✅ 컨트롤러에서 Authorization 헤더로 설정
+        return LoginResDTO.builder()
+                .token(token)
+                .id(manager.getId())
+                .email(manager.getEmail())
+                .role("admin")
+                .build();
     }
 
     public String validateDuplicateUserEmail(String email) {
@@ -198,6 +208,8 @@ public class UserService {
                 .name(name)
                 .email(email)
                 .image(image)
+                .favorites_work_id(user.getFavorites_work_id().getId())
+                .favorites_home_id(user.getFavorites_home_id().getId())
                 .build();
     }
 
