@@ -182,13 +182,16 @@ public class UserService {
     public MyPageResDTO getMyUsers(HttpServletRequest request) {
         String token = request.getHeader("Authorization").replace("Bearer ", "");
         Long id = jwtUtil.getIdFromToken(token);
-        String name = jwtUtil.getNameFromToken(token);
-        String email = jwtUtil.getEmailFromToken(token);
+        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        String name = user.getName();
+        String email = user.getEmail();
+        String image = user.getImage();
 
         return MyPageResDTO.builder()
                 .id(id)
                 .name(name)
                 .email(email)
+                .image(image)
                 .build();
     }
 
@@ -199,14 +202,22 @@ public class UserService {
 
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         // 사용자 정보 수정
-        user.setPassword(info.getPassword());
-        //user.setImage(info.getImage());
-        //userRepository.save(user);
+        if (info.getPassword()!=null) user.setPassword(info.getPassword());
+        if (info.getImage()!=null) user.setImage(info.getImage());
+        if (info.getFavorites_work_id()!=0) {
+            user.setFavorites_work_id(shuttleRepository.getReferenceById(info.getFavorites_work_id()));
+        }
+        if (info.getFavorites_home_id()!=0) {
+            user.setFavorites_home_id(shuttleRepository.getReferenceById(info.getFavorites_home_id()));
+        }
+        userRepository.save(user);
         userRepository.flush();
 
         return MyInfoResDTO.builder()
                 .name(user.getName())
-                //.image(user.getImage())
+                .image(user.getImage())
+                .favorites_work_id(user.getFavorites_work_id().getId())
+                .favorites_home_id(user.getFavorites_home_id().getId())
                 .build();
     }
 
