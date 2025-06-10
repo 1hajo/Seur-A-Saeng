@@ -123,7 +123,16 @@ const MyPageDrawer: React.FC<MyPageDrawerProps> = ({ open, onClose, onDrag }) =>
             <div className="w-full px-8 space-y-2 text-sm text-gray-500">
               <div onClick={() => { onClose(); navigate('/edit-profile'); }} className="cursor-pointer hover:text-blue-500">개인정보 수정</div>
               <div onClick={() => { onClose(); navigate('/inquiry/write'); }} className="cursor-pointer hover:text-blue-500">1:1 문의</div>
-              <div className="mt-10">로그아웃</div>
+              <div
+                className="mt-10 cursor-pointer hover:text-blue-500"
+                onClick={() => {
+                  localStorage.removeItem('accessToken');
+                  onClose();
+                  navigate('/');
+                }}
+              >
+                로그아웃
+              </div>
             </div>
           </div>
         </div>
