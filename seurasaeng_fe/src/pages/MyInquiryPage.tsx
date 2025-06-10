@@ -1,8 +1,16 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import BottomBar from '../components/BottomBar';
-import inquiries from '../mocks/inquiriesMock';
 import TopBar from '../components/TopBar';
+import apiClient from '../libs/axios';
+
+// 문의 목록 아이템 타입
+interface InquiryListItem {
+  id: number;
+  title: string;
+  created_at: string;
+  answer_status: boolean;
+}
 
 function getStatusBadge(status: string) {
   if (status === '답변완료') {
@@ -16,11 +24,18 @@ function getStatusBadge(status: string) {
 
 export default function MyInquiryPage({ isAdmin = false }) {
   const navigate = useNavigate();
+  const [inquiries, setInquiries] = useState<InquiryListItem[]>([]);
   const [draggedId, setDraggedId] = useState<number|null>(null);
   const [dragXMap, setDragXMap] = useState<{[id:number]:number}>({});
   const startXRef = useRef(0);
   const [startY, setStartY] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
+
+  useEffect(() => {
+    apiClient.get('/inquiries').then(res => {
+      setInquiries(res.data);
+    });
+  }, []);
 
   // 슬라이드 시작
   const handleTouchStart = (e: React.TouchEvent, id: number) => {
@@ -88,13 +103,13 @@ export default function MyInquiryPage({ isAdmin = false }) {
                 <div className="font-bold text-sm mb-1">{inquiry.title}</div>
                 <div className="text-xs text-gray-400 mb-1">
                   {(() => {
-                    const dateObj = new Date(inquiry.date);
-                    if (isNaN(dateObj.getTime())) return inquiry.date;
+                    const dateObj = new Date(inquiry.created_at || inquiry.date);
+                    if (isNaN(dateObj.getTime())) return inquiry.created_at || inquiry.date;
                     return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
                   })()}
                 </div>
-                {getStatusBadge(inquiry.status) && (
-                  <div className="mt-0.5">{getStatusBadge(inquiry.status)}</div>
+                {getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기') && (
+                  <div className="mt-0.5">{getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기')}</div>
                 )}
               </div>
               {/* 삭제 버튼 */}
