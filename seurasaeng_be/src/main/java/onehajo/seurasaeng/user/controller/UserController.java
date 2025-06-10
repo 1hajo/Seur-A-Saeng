@@ -5,17 +5,24 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import onehajo.seurasaeng.entity.Manager;
+import onehajo.seurasaeng.entity.User;
+import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
 import onehajo.seurasaeng.mail.service.MailService;
+import onehajo.seurasaeng.redis.service.RedisTokenService;
+import onehajo.seurasaeng.user.repository.UserRepository;
 import onehajo.seurasaeng.user.service.UserService;
 import onehajo.seurasaeng.util.JwtUtil;
 import onehajo.seurasaeng.user.dto.*;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -23,21 +30,31 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
+    private final ManagerRepository managerRepository;
     @Getter
     private final JwtUtil jwtUtil;
     private final MailService mailService;
 
-    public UserController(UserService userService, JwtUtil jwtUtil, MailService mailService) {
+    public UserController(UserService userService, UserRepository userRepository, JwtUtil jwtUtil, MailService mailService, ManagerRepository managerRepository) {
         this.userService = userService;
+        this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.mailService = mailService;
+        this.managerRepository = managerRepository;
     }
 
     @Transactional
     @PostMapping("/signup")
     public ResponseEntity<String> register(@RequestBody SignUpReqDTO request) {
-        String token = userService.registerUser(request);
         log.info("회원가입 시도");
+        String token = "token";
+        if (Objects.equals(request.getRole(), "user")){
+            token = userService.registerUser(request);
+        }
+        else if (Objects.equals(request.getRole(), "admin")){
+            token = userService.registerAdmin(request);
+        }
         return ResponseEntity.ok(token);
     }
 
@@ -59,14 +76,26 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginReqDTO request) {
-        String[] str = userService.loginUser(request);
+        String[] str = new String[2];
+        Optional<User> user = userRepository.findByEmail(request.getEmail());
+        if (user.isPresent()) {
+            str = userService.loginUser(request);
+        }
+        else {
+            Optional<Manager> manager = managerRepository.findByEmail(request.getEmail());
+            if (manager.isPresent()) {
+                str = userService.loginAdmin(request);
+            }
+            new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "로그인 성공");
+        response.put("token", str[0]);
         response.put("role", str[1]); // str[1] 포함
 
         return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + str[0]) // ✅ JWT를 헤더에 포함
+                //.header("Authorization", "Bearer " + str[0]) // ✅ JWT를 헤더에 포함
                 .body(response); // 혹은 사용자 정보 등 추가 가능
     }
 

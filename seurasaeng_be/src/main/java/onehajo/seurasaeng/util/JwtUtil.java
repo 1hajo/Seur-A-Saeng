@@ -39,6 +39,21 @@ public class JwtUtil {
                 .compact();
     }
 
+    // ✅ 토큰 생성
+    public String generateTokenAdmin(long id, String email, String role) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + expiration);
+
+        return Jwts.builder()
+                .claim("id", id)
+                .claim("email", email)
+                .claim("role", role)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     // ✅ 토큰에서 사용자 아이디 추출
     public Long getIdFromToken(String token) {
         Claims claims = Jwts.parserBuilder()

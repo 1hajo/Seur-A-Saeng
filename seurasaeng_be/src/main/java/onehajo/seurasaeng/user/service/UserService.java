@@ -4,8 +4,10 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import onehajo.seurasaeng.entity.Manager;
 import onehajo.seurasaeng.entity.Shuttle;
 import onehajo.seurasaeng.entity.User;
+import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
 import onehajo.seurasaeng.qr.exception.UserNotFoundException;
 import onehajo.seurasaeng.redis.service.RedisTokenService;
 import onehajo.seurasaeng.shuttle.repository.ShuttleRepository;
@@ -13,7 +15,6 @@ import onehajo.seurasaeng.user.exception.*;
 import onehajo.seurasaeng.user.repository.UserRepository;
 import onehajo.seurasaeng.util.JwtUtil;
 import onehajo.seurasaeng.user.dto.*;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,17 +25,19 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ManagerRepository managerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RedisTokenService redisTokenService;
     private final ShuttleRepository shuttleRepository;
 
 
-    public UserService(UserRepository userRepository,
+    public UserService(UserRepository userRepository, ManagerRepository managerRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil,
                        RedisTokenService redisTokenService, ShuttleRepository shuttleRepository) {
         this.userRepository = userRepository;
+        this.managerRepository = managerRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.redisTokenService = redisTokenService;
@@ -49,7 +52,7 @@ public class UserService {
             throw new UnAuthenticatedEmailException("gmail.com 이메일만 가입할 수 있습니다.");
         }
 
-        if (userRepository.existsByName(request.getName())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("이미 존재하는 사용자입니다.");
         }
 
@@ -74,16 +77,70 @@ public class UserService {
     }
 
     @Transactional
+    public String registerAdmin(SignUpReqDTO request) {
+        // 이메일 도메인 검사
+        String email = request.getEmail();
+        if (!email.endsWith("@gmail.com")) {
+            throw new UnAuthenticatedEmailException("gmail.com 이메일만 가입할 수 있습니다.");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("이미 존재하는 사용자입니다.");
+        }
+
+        Manager manager = Manager.builder()
+                .email(email)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .build();
+
+        managerRepository.save(manager);
+        managerRepository.flush();
+
+        String token = jwtUtil.generateTokenAdmin(manager.getId(), manager.getEmail(), request.getRole());
+        redisTokenService.saveToken(manager.getId(), token, jwtUtil.getExpiration());
+
+        return token;
+    }
+
+    @Transactional
     public String[] loginUser(LoginReqDTO request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        String token = redisTokenService.getToken(user.getId());
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("토큰이 존재하지 않습니다.");
+        }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
         String[] result = new String[2];
-        String token = redisTokenService.getToken(user.getId());
+        result[0] = token;
+        result[1] = jwtUtil.getRoleFromToken(token);
+
+        log.info(result[0]);
+        log.info(result[1]);
+
+        return result; // ✅ 컨트롤러에서 Authorization 헤더로 설정
+    }
+
+    @Transactional
+    public String[] loginAdmin(LoginReqDTO request) {
+        Manager manager = managerRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("관리자를 찾을 수 없습니다."));
+
+        String token = redisTokenService.getToken(manager.getId());
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("토큰이 존재하지 않습니다.");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), manager.getPassword())) {
+            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+        }
+
+        String[] result = new String[2];
         result[0] = token;
         result[1] = jwtUtil.getRoleFromToken(token);
 

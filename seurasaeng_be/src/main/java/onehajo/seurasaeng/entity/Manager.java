@@ -24,12 +24,12 @@ public class Manager {
 
     @Email
     @NotNull
-    @Column(name = "manager_email", columnDefinition = "varchar(50)")
+    @Column(name = "manager_email", columnDefinition = "varchar(255)")
     @NotBlank(message = "이메일은 필수 입력 값입니다.")
     private String email;
 
     @NotNull
-    @Column(name = "manager_password", columnDefinition = "varchar(50)")
+    @Column(name = "manager_password", columnDefinition = "varchar(255)")
     @NotBlank(message = "비밀번호는 필수 입력 값입니다.")
     private String password;
 
