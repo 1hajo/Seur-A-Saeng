@@ -11,8 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class MyInfoResDTO {
     private String name;
-    //private String password;
     private String image;
-    //long favorites_work_id;
-    //long favorites_home_id;
+    long favorites_work_id;
+    long favorites_home_id;
 }
