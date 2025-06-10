@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 public class MyInfoReqDTO {
     private String password;
     private String image;
-    //long favorites_work_id;
-    //long favorites_home_id;
+    long favorites_work_id = 0;
+    long favorites_home_id = 0;
 }

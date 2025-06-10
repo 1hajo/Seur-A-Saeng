@@ -9,12 +9,10 @@ import onehajo.seurasaeng.entity.Manager;
 import onehajo.seurasaeng.entity.User;
 import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
 import onehajo.seurasaeng.mail.service.MailService;
-import onehajo.seurasaeng.redis.service.RedisTokenService;
 import onehajo.seurasaeng.user.repository.UserRepository;
 import onehajo.seurasaeng.user.service.UserService;
 import onehajo.seurasaeng.util.JwtUtil;
 import onehajo.seurasaeng.user.dto.*;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -86,7 +84,7 @@ public class UserController {
             if (manager.isPresent()) {
                 str = userService.loginAdmin(request);
             }
-            new RuntimeException("사용자를 찾을 수 없습니다.");
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
         }
 
         Map<String, String> response = new HashMap<>();
@@ -127,7 +125,6 @@ public class UserController {
 
     @PatchMapping("/me")
     public ResponseEntity<?> updateUser(HttpServletRequest request, @RequestBody MyInfoReqDTO myInfoReqDTO) {
-        //MyPageResDTO myPageResDTO = userService.getMyUsers(request);
         MyInfoResDTO myInfoResDTO = userService.getMyInfo(request, myInfoReqDTO);
 
         return new ResponseEntity<MyInfoResDTO>(myInfoResDTO, HttpStatus.OK);
