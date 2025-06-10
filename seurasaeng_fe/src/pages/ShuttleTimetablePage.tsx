@@ -38,22 +38,39 @@ function handleTimeInput(val: string, setValue: (v: string) => void) {
   setValue(formatted);
 }
 
-// API 데이터 -> 기존 TimetableItem 타입으로 변환
-function mapApiToTimetable(apiData: any): ShuttleScheduleJson {
-  function mapItem(item: TimetableItem, isOffwork = false): TimetableItem {
+interface ApiTimetableItem {
+  shuttleId: number;
+  spotName: string;
+  totalSeats: string;
+  duration: string;
+  boardingPoint: string;
+  timetables: { turn: string; departureTime: string }[];
+}
+
+type TimetableItemWithId = TimetableItem & { id: number };
+
+function mapApiToTimetable(apiData: { commute: ApiTimetableItem[]; offwork: ApiTimetableItem[] }): { 출근: TimetableItemWithId[]; 퇴근: TimetableItemWithId[] } {
+  function mapItem(item: ApiTimetableItem, isOffwork = false): TimetableItemWithId {
     return {
+      id: item.shuttleId,
       거점: item.spotName,
       차량규격: item.totalSeats,
       소요시간: item.duration,
       승차장소: isOffwork ? undefined : item.boardingPoint,
       하차장소: isOffwork ? item.boardingPoint : undefined,
-      출발시간: (item.timetables || []).map((t: any) => ({ [t.turn]: t.departureTime })),
+      출발시간: (item.timetables || []).map((t: { turn: string; departureTime: string }) => ({ [t.turn]: t.departureTime })),
     };
   }
   return {
-    출근: (apiData.commute || []).map((item: TimetableItem) => mapItem(item, false)),
-    퇴근: (apiData.offwork || []).map((item: TimetableItem) => mapItem(item, true)),
+    출근: (apiData.commute || []).map((item: ApiTimetableItem) => mapItem(item, false)),
+    퇴근: (apiData.offwork || []).map((item: ApiTimetableItem) => mapItem(item, true)),
   };
+}
+
+// 즐겨찾기 노선 타입
+interface UserPreferences {
+  favoritesWorkId?: number;
+  favoritesHomeId?: number;
 }
 
 export default function ShuttleTimetablePage({ isAdmin = false }) {
@@ -124,20 +141,61 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
 
   // 시간표 데이터 API로 받아오기
   useEffect(() => {
-    const fetchTimetables = async () => {
+    const fetchPreferencesAndTimetables = async () => {
       try {
+        // 1. 즐겨찾기 노선 정보 요청
+        const prefRes = await apiClient.get('/users/me/preferences');
+        const preferences: UserPreferences = prefRes.data;
+
+        // 2. 시간표 데이터 요청
         const res = await apiClient.get('/timetables');
         const mapped = mapApiToTimetable(res.data);
-        setTimetableData(mapped);
+        setTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
         // 거점명 추출
         const go = mapped.출근.map(item => item.거점);
         const back = mapped.퇴근.map(item => item.거점);
-        setLocations(Array.from(new Set([...go, ...back])));
-      } catch (err) {
-        console.error('셔틀 시간표 조회 실패', err);
+        const allLocations = Array.from(new Set([...go, ...back]));
+        setLocations(allLocations);
+
+        // 3. 즐겨찾기 노선이 있으면 오전/오후에 따라 탭과 노선 선택
+        const now = new Date();
+        const hour = now.getHours();
+        const initialTab: '출근' | '퇴근' = hour < 12 ? '출근' : '퇴근';
+        let initialLocationIdx = 0;
+        if (initialTab === '출근' && preferences.favoritesWorkId) {
+          // 출근 노선에서 id가 일치하는 index 찾기
+          const commuteIdx = (mapped.출근 as TimetableItemWithId[]).findIndex(item => item.id === preferences.favoritesWorkId);
+          if (commuteIdx !== -1) {
+            const commuteName = mapped.출근[commuteIdx].거점;
+            const idx = allLocations.indexOf(commuteName);
+            if (idx !== -1) initialLocationIdx = idx;
+          }
+        } else if (initialTab === '퇴근' && preferences.favoritesHomeId) {
+          // 퇴근 노선에서 id가 일치하는 index 찾기
+          const offworkIdx = (mapped.퇴근 as TimetableItemWithId[]).findIndex(item => item.id === preferences.favoritesHomeId);
+          if (offworkIdx !== -1) {
+            const offworkName = mapped.퇴근[offworkIdx].거점;
+            const idx = allLocations.indexOf(offworkName);
+            if (idx !== -1) initialLocationIdx = idx;
+          }
+        }
+        setTab(initialTab);
+        setLocationIdx(initialLocationIdx);
+      } catch {
+        // 실패 시 기존대로 동작
+        try {
+          const res = await apiClient.get('/timetables');
+          const mapped = mapApiToTimetable(res.data);
+          setTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+          const go = mapped.출근.map(item => item.거점);
+          const back = mapped.퇴근.map(item => item.거점);
+          setLocations(Array.from(new Set([...go, ...back])));
+        } catch (err2) {
+          console.error('셔틀 시간표 조회 실패', err2);
+        }
       }
     };
-    fetchTimetables();
+    fetchPreferencesAndTimetables();
   }, []);
 
   return (
