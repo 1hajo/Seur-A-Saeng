@@ -9,30 +9,41 @@ import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios'; // 네 API 클라이언트 import
 import {API} from '../constants/api'; // API 엔드포인트 상수
 
-// TODO: 즐겨찾기 데이터 - API 연동 전 하드코딩
-const mockFavoriteRouteIds = {
-  출근: 4,
-  퇴근: 8,
-};
+// 즐겨찾기 노선 타입
+interface UserPreferences {
+  favoritesWorkId?: number;
+  favoritesHomeId?: number;
+}
+
+interface ApiRouteItem {
+  id: number;
+  commute: boolean;
+  departureName: string;
+  departureLatitude: number;
+  departureLongitude: number;
+  destinationName: string;
+  destinationLatitude: number;
+  destinationLongitude: number;
+}
 
 // 위치 정보 포함 노선 목록 조회 API 호출 함수
 const fetchRouteData = async (): Promise<RoutesResponse> => {
   const response = await apiClient.get(API.routes.listWithLocation);
-  const data = response.data; 
+  const data: ApiRouteItem[] = response.data;
 
   // 출근/퇴근 분리
-  const commuteRoutes = data.filter((item: any) => item.commute === true);
-  const offworkRoutes = data.filter((item: any) => item.commute === false);
+  const commuteRoutes = data.filter((item) => item.commute === true);
+  const offworkRoutes = data.filter((item) => item.commute === false);
 
   // RoutesResponse 형태로 변환
   const formattedRoutes: RoutesResponse = {
-    출근: commuteRoutes.map((item: any) => ({
+    출근: commuteRoutes.map((item) => ({
       id: item.id,
       name: item.departureName,
       latitude: item.departureLatitude,
       longitude: item.departureLongitude,
     })),
-    퇴근: offworkRoutes.map((item: any) => ({
+    퇴근: offworkRoutes.map((item) => ({
       id: item.id,
       name: item.destinationName,
       latitude: item.destinationLatitude,
@@ -53,18 +64,31 @@ export default function EmployeeGPSApp() {
   const selectedBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [showChatbot, setShowChatbot] = useState(false);
 
-  // 위치 정보 포함 노선 목록 조회 API 호출
+  const [locationIdx, setLocationIdx] = useState(0);
+  const [userPrefs, setUserPrefs] = useState<UserPreferences | null>(null);
+
   useEffect(() => {
-    fetchRouteData()
-      .then((data) => {
+    const fetchAll = async () => {
+      try {
+        // 1. 즐겨찾기 노선 정보 요청
+        const prefRes = await apiClient.get('/users/me/preferences');
+        setUserPrefs(prefRes.data);
+        // 2. 노선 데이터 요청
+        const data = await fetchRouteData();
         setRouteData(data);
-      })
-      .catch((error) => {
-        console.error('[API 호출 에러] Error fetching route data:', error);
-      })
-      .finally(() => {
+        // 3. 오전/오후에 따라 탭/노선 자동 선택
+        const now = new Date();
+        const hour = now.getHours();
+        const initialTab: RouteType = hour < 12 ? '출근' : '퇴근';
+        setActiveTab(initialTab);
+        setLocationIdx(getFavoriteRouteIndex(initialTab, prefRes.data));
+      } catch (err) {
+        console.error('[API 호출 에러] Error fetching route data or preferences:', err);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+    fetchAll();
   }, []);
 
   useEffect(() => {
@@ -77,21 +101,22 @@ export default function EmployeeGPSApp() {
 
   const routes = routeData ? routeData[activeTab] : [];
 
-  function getFavoriteRouteIndex(tab: RouteType) {
+  function getFavoriteRouteIndex(tab: RouteType, prefs?: UserPreferences) {
     if (!routeData) return 0;
-    const favoriteId = mockFavoriteRouteIds[tab];
+    const favoriteId = tab === '출근' ? prefs?.favoritesWorkId : prefs?.favoritesHomeId;
     const routes = routeData[tab];
-    const index = routes.findIndex(route => route.id === favoriteId);
-    return index !== -1 ? index : 0;
+    if (favoriteId) {
+      const index = routes.findIndex(route => route.id === favoriteId);
+      return index !== -1 ? index : 0;
+    }
+    return 0;
   }
-
-  const [locationIdx, setLocationIdx] = useState(0);
 
   useEffect(() => {
     if (routeData) {
-      setLocationIdx(getFavoriteRouteIndex(activeTab));
+      setLocationIdx(getFavoriteRouteIndex(activeTab, userPrefs));
     }
-  }, [routeData, activeTab]);
+  }, [routeData, activeTab, userPrefs]);
 
   const selectedRoute = routes[locationIdx] || null;
 
@@ -112,7 +137,7 @@ export default function EmployeeGPSApp() {
   const handleTabClick = (tab: RouteType) => {
     setActiveTab(tab);
     if (routeData) {
-      setLocationIdx(getFavoriteRouteIndex(tab));
+      setLocationIdx(getFavoriteRouteIndex(tab, userPrefs));
     }
   };
 
