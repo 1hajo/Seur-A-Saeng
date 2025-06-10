@@ -9,7 +9,8 @@ import onehajo.seurasaeng.entity.Manager;
 import onehajo.seurasaeng.entity.User;
 import onehajo.seurasaeng.inquiry.dto.*;
 import onehajo.seurasaeng.inquiry.exception.InquiryException;
-import onehajo.seurasaeng.inquiry.exception.UserException;
+import onehajo.seurasaeng.inquiry.exception.ManagerNotFoundException;
+import onehajo.seurasaeng.inquiry.exception.UnauthorizedAccessException;
 import onehajo.seurasaeng.inquiry.repository.AnswerRepository;
 import onehajo.seurasaeng.inquiry.repository.InquiryRepository;
 import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
@@ -63,16 +64,26 @@ public class InquiryService {
                 .collect(Collectors.toList());
     }
 
-    // 문의 상세 조회
+    // 문의 상세 조회 - 사용자
     public InquiryDetailResDTO getInquiryDetail(Long id, Long user_id) {
         Inquiry inquiry = validateInquiryExists(id);
 
         validateInquiryOwner(inquiry, user_id);
 
-        // answer_status가 true일 때 -> Answer 조회, false -> null
         AnswerResDTO answerDTO = findAnswerByInquiry(inquiry);
 
         return buildInquiryDetailResponse(inquiry, user_id, answerDTO);
+    }
+
+    // 문의 상세 조회 - 관리자
+    public InquiryDetailResDTO getAdminInquiryDetail(Long id, Long manager_id) {
+        Inquiry inquiry = validateInquiryExists(id);
+
+        validateManagerExists(manager_id);
+
+        AnswerResDTO answerDTO = findAnswerByInquiry(inquiry);
+
+        return buildInquiryDetailResponse(inquiry, inquiry.getUser().getId(), answerDTO);
     }
 
     // 문의 삭제
@@ -83,11 +94,10 @@ public class InquiryService {
 
             validateDeleteInquiryOwner(inquiry, user_id);
 
-            // 답변 내용이 있다면 답변 삭제
             deleteAnswerIfExist(inquiry);
 
             inquiryRepository.deleteById(id);
-        } catch (InquiryException | UserException | UserNotFoundException e) {
+        } catch (InquiryException | UserNotFoundException | UnauthorizedAccessException e) {
             throw e;
         } catch (Exception e) {
             log.error("문의 삭제 실패 - inquiry_id : {}", id);
@@ -103,7 +113,6 @@ public class InquiryService {
 
         Answer answer = buildAnswer(inquiry, manager, request);
         Answer savedAnswer = answerRepository.save(answer);
-        log.info("Answer 저장 완료 - answerId: {}", savedAnswer.getId());
 
         inquiryRepository.updateAnswerStatus(inquiry_id, true);
 
@@ -128,18 +137,18 @@ public class InquiryService {
 
     private Manager validateManagerExists(Long manager_id) {
         return managerRepository.findById(manager_id)
-                .orElseThrow(() -> new IllegalArgumentException("관리자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ManagerNotFoundException("관리자를 찾을 수 없습니다."));
     }
 
     private void validateInquiryOwner(Inquiry inquiry, Long user_id) {
         if (!inquiry.getUser().getId().equals(user_id)) {
-            throw new UserException("본인의 문의만 접근할 수 있습니다.");
+            throw new UnauthorizedAccessException("본인의 문의만 접근할 수 있습니다.");
         }
     }
 
     private void validateDeleteInquiryOwner(Inquiry inquiry, Long user_id) {
         if (!inquiry.getUser().getId().equals(user_id)) {
-            throw new RuntimeException("본인의 문의만 삭제할 수 있습니다.");
+            throw new UnauthorizedAccessException("본인의 문의만 삭제할 수 있습니다.");
         }
     }
 

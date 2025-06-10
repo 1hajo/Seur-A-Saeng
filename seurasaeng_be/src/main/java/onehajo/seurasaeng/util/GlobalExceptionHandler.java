@@ -1,6 +1,8 @@
 package onehajo.seurasaeng.util;
 
 import lombok.extern.slf4j.Slf4j;
+import onehajo.seurasaeng.inquiry.exception.ManagerNotFoundException;
+import onehajo.seurasaeng.inquiry.exception.UnauthorizedAccessException;
 import onehajo.seurasaeng.qr.exception.InvalidQRCodeException;
 import onehajo.seurasaeng.qr.exception.UserNotFoundException;
 import onehajo.seurasaeng.shuttle.exception.InvalidTimetableSizeException;
@@ -65,5 +67,15 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", e.getMessage()));
     }
 
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<?> handleUnauthorizedAccess(UnauthorizedAccessException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", e.getMessage()));
+    }
 
+    @ExceptionHandler(ManagerNotFoundException.class)
+    public ResponseEntity<?> handleManagerNotFound(ManagerNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", e.getMessage()));
+    }
 }

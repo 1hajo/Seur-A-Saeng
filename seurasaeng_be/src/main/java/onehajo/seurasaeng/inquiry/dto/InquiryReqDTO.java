@@ -1,14 +1,12 @@
 package onehajo.seurasaeng.inquiry.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class InquiryReqDTO {
     private String title;
     private String content;

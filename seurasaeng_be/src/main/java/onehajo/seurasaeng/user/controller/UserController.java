@@ -44,7 +44,7 @@ public class UserController {
 
     @Transactional
     @PostMapping("/signup")
-    public ResponseEntity<String> register(@RequestBody SignUpReqDTO request) {
+    public ResponseEntity<String> register(@RequestBody SignUpReqDTO request) throws Exception {
         log.info("회원가입 시도");
         String token = "token";
         if (Objects.equals(request.getRole(), "user")){

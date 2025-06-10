@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.entity.Manager;
 import onehajo.seurasaeng.entity.Shuttle;
 import onehajo.seurasaeng.entity.User;
+import onehajo.seurasaeng.qr.service.QRService;
 import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
 import onehajo.seurasaeng.qr.exception.UserNotFoundException;
 import onehajo.seurasaeng.redis.service.RedisTokenService;
@@ -30,22 +31,25 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final RedisTokenService redisTokenService;
     private final ShuttleRepository shuttleRepository;
+    private final QRService qrService;
 
 
     public UserService(UserRepository userRepository, ManagerRepository managerRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil,
-                       RedisTokenService redisTokenService, ShuttleRepository shuttleRepository) {
+                       RedisTokenService redisTokenService, ShuttleRepository shuttleRepository,
+                       QRService qrService) {
         this.userRepository = userRepository;
         this.managerRepository = managerRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.redisTokenService = redisTokenService;
         this.shuttleRepository = shuttleRepository;
+        this.qrService = qrService;
     }
 
     @Transactional
-    public String registerUser(SignUpReqDTO request) {
+    public String registerUser(SignUpReqDTO request) throws Exception {
         // 이메일 도메인 검사
         String email = request.getEmail();
         if (!email.endsWith("@gmail.com")) {
@@ -71,6 +75,8 @@ public class UserService {
         userRepository.flush();
 
         String token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail(), request.getRole());
+        qrService.generateQRCode(user.getId(), user.getEmail());
+
         redisTokenService.saveToken(user.getId(), token, jwtUtil.getExpiration());
 
         return token;
