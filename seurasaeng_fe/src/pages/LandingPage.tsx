@@ -30,12 +30,6 @@ export default function LandingPage() {
         >
           로그인
         </button>
-        <button
-          className="w-full py-3 rounded-lg border border-gray-400 text-gray-700 text-base font-normal bg-white hover:bg-gray-50 transition mt-2"
-          onClick={() => navigate('/main')}
-        >
-          메인 페이지 테스트
-        </button>
       </div>
     </div>
   );
