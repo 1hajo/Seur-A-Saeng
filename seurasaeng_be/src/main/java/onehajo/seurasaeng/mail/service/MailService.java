@@ -6,7 +6,6 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import onehajo.seurasaeng.entity.User;
-import onehajo.seurasaeng.mail.dto.MailResDTO;
 import onehajo.seurasaeng.user.repository.UserRepository;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -24,18 +23,6 @@ public class MailService {
     private final JavaMailSender javaMailSender;
     private final SpringTemplateEngine templateEngine;
     private final UserRepository userRepository;
-
-    public void sendEmail(MailResDTO mailResDTO) throws MessagingException {
-        MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "utf-8");
-
-        helper.setFrom(mailResDTO.getMailFrom());
-        helper.setTo(mailResDTO.getMailTo());
-        helper.setSubject(mailResDTO.getMailSubject());
-        helper.setText(mailResDTO.getMailContent(), true);
-
-        javaMailSender.send(mimeMessage);
-    }
 
     public int makeRandomNum() {
         Random random = new Random();
@@ -71,13 +58,13 @@ public class MailService {
     public String tempPassword(String email) throws MessagingException {
         // 존재하는 메일인지 확인
         Optional<User> findUsers = userRepository.findByEmail(email);
-        if (!findUsers.isPresent()) {
+        if (findUsers.isEmpty()) {
             throw new EntityNotFoundException("가입된 이메일이 아닙니다.");
         }
 
         String newPassword = makeRandomPassword();
         String setFrom = "youjiyeon4@gmail.com";
-        String subject = "[슬기로운 아이티센 생활] 회원 가입 인증 이메일 입니다.";
+        String subject = "[슬기로운 아이티센 생활] 비밀번호 재설정 이메일 입니다.";
 
         // Thymeleaf context 설정
         Context context = new Context();
@@ -101,24 +88,24 @@ public class MailService {
     }
 
     public String makeRandomPassword() {
-        StringBuffer temp = new StringBuffer();
+        StringBuilder temp = new StringBuilder();
         Random rnd = new Random();
         //특수문자 아스키 코드
-        int arr[] = {33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+        int[] arr = {33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
                 43, 44, 45, 46, 47, 58, 59, 60, 61, 62,
                 63, 64, 91, 92, 93, 94, 95, 96, 123, 124,
                 125, 126};
-        int n = 0;
+        int n;
 
         for (int i = 0; i < 10; i++) {
             int rIndex = rnd.nextInt(4);
             switch (rIndex) {
                 case 0:
                     // a-z 영어소문자 아스키코드
-                    temp.append((char)((int)(rnd.nextInt(26)) + 97));
+                    temp.append((char)(rnd.nextInt(26) + 97));
                     break;
                 case 1: // A-Z 영어대문자 아스키코드
-                    temp.append((char)((int)(rnd.nextInt(26)) + 65));
+                    temp.append((char)(rnd.nextInt(26) + 65));
                     break;
                 case 2:
                     // 0-9 숫자 아스키코드
