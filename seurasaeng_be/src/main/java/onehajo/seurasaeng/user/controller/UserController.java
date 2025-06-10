@@ -89,15 +89,6 @@ public class UserController {
         return ResponseEntity.ok(loginResDTO);
     }
 
-    @GetMapping("/auto-login")
-    public ResponseEntity<?> autoLogin(@RequestBody AutoLoginReqDTO request) {
-        String token = userService.remakeToken(request);
-
-        return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + token) // ✅ JWT를 헤더에 포함
-                .body("재로그인 성공"); // 혹은 사용자 정보 등 추가 가능
-    }
-
     @PostMapping("/forgot-password")
     public ResponseEntity<?> lostPassword(@RequestParam("email") String email) throws MessagingException {
         // mailService에서 임시 비밀번호 생성

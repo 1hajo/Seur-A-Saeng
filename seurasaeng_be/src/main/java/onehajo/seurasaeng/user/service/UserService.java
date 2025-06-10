@@ -174,16 +174,6 @@ public class UserService {
         return email;
     }
 
-    @Transactional
-    public String remakeToken(AutoLoginReqDTO request) {
-        redisTokenService.deleteToken(request.getId());
-
-        String token = jwtUtil.generateToken(request.getId(), request.getName(), request.getPassword(), request.getRole());
-        redisTokenService.saveToken(request.getId(), token, jwtUtil.getExpiration());
-
-        return token;
-    }
-
     public void updatePasswordByEmail(String password, String email) {
         Optional<User> findUsers = userRepository.findByEmail(email);
         if (findUsers.isEmpty()) {
