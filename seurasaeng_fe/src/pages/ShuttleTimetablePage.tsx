@@ -1,18 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import BottomBar from '../components/BottomBar';
-import shuttleData from '../mocks/shuttle_schedule.json';
+import apiClient from '../libs/axios';
 import SlideTab from '../components/SlideTab';
 import TopBar from '../components/TopBar';
 import type { TimetableItem, ShuttleScheduleJson } from '../types/ShuttleTypes';
-
-// Extract unique locations from 출근 and 퇴근
-const getLocations = () => {
-  const go = shuttleData["출근"].map((item) => item["거점"]);
-  const back = shuttleData["퇴근"].map((item) => item["거점"]);
-  return Array.from(new Set([...go, ...back]));
-};
-
-const LOCATIONS = getLocations();
 
 // 도착 시간 계산 함수
 function getArrivalTime(departure: string, duration: string): string {
@@ -28,9 +19,7 @@ function getArrivalTime(departure: string, duration: string): string {
 
 // 출발 시간이 현재 시간 이전인지 확인하는 함수
 function isPastTime(departure: string) {
-  // 테스트용: 현재 시간을 8:20으로 고정
   const now = new Date();
-  now.setHours(8, 20, 0, 0);
   const [h, m] = departure.split(":").map(Number);
   if (isNaN(h) || isNaN(m)) return false;
   const dep = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
@@ -49,11 +38,28 @@ function handleTimeInput(val: string, setValue: (v: string) => void) {
   setValue(formatted);
 }
 
+// API 데이터 -> 기존 TimetableItem 타입으로 변환
+function mapApiToTimetable(apiData: any): ShuttleScheduleJson {
+  function mapItem(item: TimetableItem, isOffwork = false): TimetableItem {
+    return {
+      거점: item.spotName,
+      차량규격: item.totalSeats,
+      소요시간: item.duration,
+      승차장소: isOffwork ? undefined : item.boardingPoint,
+      하차장소: isOffwork ? item.boardingPoint : undefined,
+      출발시간: (item.timetables || []).map((t: any) => ({ [t.turn]: t.departureTime })),
+    };
+  }
+  return {
+    출근: (apiData.commute || []).map((item: TimetableItem) => mapItem(item, false)),
+    퇴근: (apiData.offwork || []).map((item: TimetableItem) => mapItem(item, true)),
+  };
+}
+
 export default function ShuttleTimetablePage({ isAdmin = false }) {
   // timetableData는 수정/삭제를 위해 state로 관리
-  const [timetableData, setTimetableData] = useState<ShuttleScheduleJson>(
-    shuttleData as unknown as ShuttleScheduleJson
-  );
+  const [timetableData, setTimetableData] = useState<ShuttleScheduleJson | null>(null);
+  const [locations, setLocations] = useState<string[]>([]);
 
   const [locationIdx, setLocationIdx] = useState(0);
 
@@ -74,10 +80,9 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
   const [tab, setTab] = useState<'출근' | '퇴근'>("출근");
 
   // Filter timetable for selected location and type
-  const timetable: TimetableItem[] = timetableData[tab].filter(
-    (item) => item.거점 === LOCATIONS[locationIdx]
-  );
-
+  const timetable: TimetableItem[] = timetableData && timetableData[tab]
+    ? timetableData[tab].filter((item) => item.거점 === locations[locationIdx])
+    : [];
 
   // 화살표로 이동 시, 선택된 거점이 항상 보이도록 스크롤
   useEffect(() => {
@@ -117,6 +122,24 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
   // eslint-disable-next-line
   }, [isAdmin]);
 
+  // 시간표 데이터 API로 받아오기
+  useEffect(() => {
+    const fetchTimetables = async () => {
+      try {
+        const res = await apiClient.get('/timetables');
+        const mapped = mapApiToTimetable(res.data);
+        setTimetableData(mapped);
+        // 거점명 추출
+        const go = mapped.출근.map(item => item.거점);
+        const back = mapped.퇴근.map(item => item.거점);
+        setLocations(Array.from(new Set([...go, ...back])));
+      } catch (err) {
+        console.error('셔틀 시간표 조회 실패', err);
+      }
+    };
+    fetchTimetables();
+  }, []);
+
   return (
     <div className="bg-white pb-16" style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}>
       {/* 상단바 */}
@@ -126,7 +149,7 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
       {/* SlideTab 컴포넌트로 대체 */}
       <div className="pt-16">
         <SlideTab
-          locations={LOCATIONS}
+          locations={locations}
           locationIdx={locationIdx}
           onLocationChange={setLocationIdx}
           tab={tab}
@@ -143,11 +166,15 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
             <div key={idx} className="w-full max-w-md bg-[#5382E0] rounded-xl text-white flex flex-col items-center mb-6 py-3 px-4 relative">
               {/* 노선 헤더 */}
               <div className="text-lg font-bold mb-1 text-center w-full">
-                {LOCATIONS[locationIdx]} → 아이티센 타워
+                {locations[locationIdx]} → 아이티센 타워
               </div>
               {/* 승/하차 장소 안내 (카드 안쪽, 헤더 아래) */}
               <div className="text-xs text-blue-100 mb-8 w-full text-center">
-                승차 장소: {item.승차장소}
+                {tab === '퇴근' ? (
+                  <>하차 장소: {item.하차장소}</>
+                ) : (
+                  <>승차 장소: {item.승차장소}</>
+                )}
               </div>
               {/* 소요시간 */}
               <div className="text-base font-semibold mb-2 w-full text-center">소요시간: {item.소요시간}</div>
@@ -190,7 +217,7 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
                                     // 빈 값이거나 잘못된 값이면 해당 카드 삭제
                                     setTimetableData(prev => {
                                       const newData = JSON.parse(JSON.stringify(prev));
-                                      const list = newData[tab].find((it: TimetableItem) => it.거점 === LOCATIONS[locationIdx]);
+                                      const list = newData[tab].find((it: TimetableItem) => it.거점 === locations[locationIdx]);
                                       if (list) {
                                         const removeIdx = item.출발시간.findIndex(obj => Object.values(obj)[0] === '' || Object.values(obj)[0] === editValue);
                                         if (removeIdx !== -1) {
@@ -204,7 +231,7 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
                                   }
                                   setTimetableData(prev => {
                                     const newData = JSON.parse(JSON.stringify(prev));
-                                    const list = newData[tab].find((it: TimetableItem) => it.거점 === LOCATIONS[locationIdx]);
+                                    const list = newData[tab].find((it: TimetableItem) => it.거점 === locations[locationIdx]);
                                     if (list) {
                                       // 정렬 전 원본 인덱스 찾기
                                       const origIdx = item.출발시간.findIndex(obj => Object.values(obj)[0] === depTime || Object.values(obj)[0] === '');
@@ -234,7 +261,7 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
                                   if (depTime === '') {
                                     setTimetableData(prev => {
                                       const newData = JSON.parse(JSON.stringify(prev));
-                                      const list = newData[tab].find((it: TimetableItem) => it.거점 === LOCATIONS[locationIdx]);
+                                      const list = newData[tab].find((it: TimetableItem) => it.거점 === locations[locationIdx]);
                                       if (list) {
                                         const removeIdx = item.출발시간.findIndex(obj => Object.values(obj)[0] === '');
                                         if (removeIdx !== -1) {
@@ -288,7 +315,7 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
                                   onClick={() => {
                                     setTimetableData(prev => {
                                       const newData = JSON.parse(JSON.stringify(prev));
-                                      const list = newData[tab].find((it: TimetableItem) => it.거점 === LOCATIONS[locationIdx]);
+                                      const list = newData[tab].find((it: TimetableItem) => it.거점 === locations[locationIdx]);
                                       if (list) {
                                         // 정렬 전 원본 인덱스 찾기
                                         const origIdx = item.출발시간.findIndex(obj => Object.values(obj)[0] === depTime);
@@ -325,7 +352,7 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
                         if (isCurrentLocationEditing) return;
                         setTimetableData(prev => {
                           const newData = JSON.parse(JSON.stringify(prev));
-                          const list = newData[tab].find((it: TimetableItem) => it.거점 === LOCATIONS[locationIdx]);
+                          const list = newData[tab].find((it: TimetableItem) => it.거점 === locations[locationIdx]);
                           if (list) {
                             const nextNum = list.출발시간.length + 1;
                             list.출발시간.push({ [`${nextNum}회`]: '' });
