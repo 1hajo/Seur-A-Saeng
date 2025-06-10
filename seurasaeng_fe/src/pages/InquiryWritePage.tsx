@@ -1,15 +1,24 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import TopBar from '../components/TopBar';
+import apiClient from '../libs/axios';
 
 export default function MyInquiryWritePage() {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [inquiryContent, setInquiryContent] = useState('');
 
-  const handleSubmit = () => {
-    // TODO: 문의 등록 로직 구현
-    navigate(-1);
+  const handleSubmit = async () => {
+    try {
+      const res = await apiClient.post('/inquiries', {
+        title,
+        content: inquiryContent,
+      });
+      // 상세 페이지로 이동하며 응답 객체를 state로 전달
+      navigate(`/inquiry/${res.data.inquiry_id}`, { state: res.data });
+    } catch {
+      alert('문의 등록에 실패했습니다.');
+    }
   };
 
   const isValid = title.trim() !== '' && inquiryContent.trim() !== '';

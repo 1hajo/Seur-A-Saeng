@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import inquiries from "../mocks/inquiriesMock";
 import BottomBar from '../components/BottomBar';
@@ -7,7 +7,20 @@ import TopBar from '../components/TopBar';
 const InquiryDetailPage = ({ isAdmin = false }) => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const inquiry = inquiries.find(q => q.id === Number(id));
+  const location = useLocation();
+  // location.state로 받은 객체가 있으면 그걸로, 없으면 mock에서 찾기
+  const inquiry = location.state
+    ? {
+        id: location.state.inquiry_id,
+        title: location.state.title,
+        content: location.state.content,
+        user_name: location.state.user_name,
+        date: location.state.created_at,
+        status: location.state.answer_status ? '답변완료' : '답변대기',
+        answer: location.state.answer || '',
+        answerDate: location.state.answered_at || '',
+      }
+    : inquiries.find(q => q.id === Number(id));
   const [answer, setAnswer] = useState('');
 
   if (!inquiry) {
