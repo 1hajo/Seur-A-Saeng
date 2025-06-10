@@ -52,8 +52,16 @@ public class InquiryController {
     public ResponseEntity<?> getInquiriesByManagerId(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         Long manager_id = jwtUtil.getIdFromToken(token);
+        String role = jwtUtil.getRoleFromToken(token);
 
-        List<InquiryResDTO> inquiryList = inquiryService.getInquiriesByManagerId(manager_id);
+        log.info("manager_id : {}, role : {}", manager_id, role);
+
+        List<InquiryResDTO> inquiryList;
+        if(role.equals("admin")) {
+            inquiryList = inquiryService.getInquiriesByManagerId(manager_id);
+        } else {
+            return ResponseEntity.badRequest().body(Map.of("error", "관리자가 아닙니다"));
+        }
 
         return ResponseEntity.ok(inquiryList);
     }
@@ -63,14 +71,18 @@ public class InquiryController {
     public ResponseEntity<?> getInquiryDetail(
             @RequestHeader("Authorization") String authHeader, @PathVariable Long id) {
         String token = authHeader.replace("Bearer ", "");
-        Long user_id = jwtUtil.getIdFromToken(token);
-        
-        /* TODO : ROLE 확인 -> 사용자 : 본인이 작성한 문의만 조회 가능, 관리자 : 모든 문의 조회 가능
-        * ROLE = USER -> inquiryService.getInquiryDetail(id, user_id);
-        * ROLE = ADMIN -> inquiryService.getAdminInquiryDetail(id, manager_id);
-        * */
+        Long account_id = jwtUtil.getIdFromToken(token);
 
-        InquiryDetailResDTO inquiry = inquiryService.getInquiryDetail(id, user_id);
+        String role = jwtUtil.getRoleFromToken(token);
+
+        InquiryDetailResDTO inquiry;
+        if (role.equals("user")) {
+            inquiry = inquiryService.getInquiryDetail(id, account_id);
+        } else if (role.equals("admin")) {
+            inquiry = inquiryService.getAdminInquiryDetail(id, account_id);
+        } else {
+            return ResponseEntity.badRequest().body(Map.of("error", "관리자가 아닙니다"));
+        }
 
         return ResponseEntity.ok(inquiry);
     }
@@ -94,8 +106,12 @@ public class InquiryController {
             @PathVariable("id") Long id, @RequestHeader("Authorization") String authHeader, @RequestBody AnswerReqDTO request) {
         String token = authHeader.replace("Bearer ", "");
         Long manager_id = jwtUtil.getIdFromToken(token);
+        String role = jwtUtil.getRoleFromToken(token);
 
-        // TODO : 관리자 ROLE 확인 (관리자 아닐 경우 Exception)
+        // 관리자 ROLE 확인 (관리자 아닐 경우 Exception)
+        if (!role.equals("admin")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "관리자가 아닙니다"));
+        }
 
         InquiryDetailResDTO response = inquiryService.saveAnswer(id, manager_id, request);
 
