@@ -1,11 +1,29 @@
 import React, { useRef, useState, useEffect } from 'react';
 import TopBar from '../components/TopBar';
+import apiClient from '../libs/axios';
 
 const QrPage: React.FC = () => {
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const start = useRef({ x: 0, y: 0 });
   const startRotate = useRef({ x: 0, y: 0 });
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchQr = async () => {
+      try {
+        const res = await apiClient.get('/users/me/qr');
+        setQrCode(res.data.qr_code);
+      } catch {
+        setError('QR 코드를 불러오지 못했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQr();
+  }, []);
 
   // 페이지 전체에서 풀 다운 새로고침 방지
   useEffect(() => {
@@ -67,11 +85,19 @@ const QrPage: React.FC = () => {
             <div className="text-2xl font-bold text-white mb-2">세니</div>
             {/* QR+프로필 */}
             <div className="relative flex items-center justify-center mb-6 mt-2">
-              <img 
-                src="/real-qr.png" 
-                alt="QR Code" 
-                className="w-44 h-44 object-contain rounded-lg"
-              />
+              {loading ? (
+                <div className="w-44 h-44 flex items-center justify-center bg-white/30 rounded-lg text-white">로딩 중...</div>
+              ) : error ? (
+                <div className="w-44 h-44 flex items-center justify-center bg-red-100 rounded-lg text-red-500 text-center text-xs">{error}</div>
+              ) : qrCode ? (
+                <img
+                  src={`data:image/png;base64,${qrCode}`}
+                  alt="QR Code"
+                  className="w-44 h-44 object-contain rounded-lg"
+                />
+              ) : (
+                <div className="w-44 h-44 flex items-center justify-center bg-gray-100 rounded-lg text-gray-400">QR 없음</div>
+              )}
               <img
                 src="/ceni-face.webp"
                 alt="Profile"
