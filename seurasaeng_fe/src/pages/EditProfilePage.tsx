@@ -182,7 +182,7 @@ export default function EditProfilePage() {
                   onChange={e => setRouteReturn(e.target.value)}
                 >
                   <option value="">선택 안 함</option>
-                  {LOCATIONS.filter(loc => loc.id >= 6 && loc.id <= 9).map(loc => (
+                  {LOCATIONS.filter(loc => loc.id >= 6 && loc.id <= 10).map(loc => (
                     <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
                   ))}
                 </select>
