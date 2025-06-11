@@ -1,5 +1,4 @@
 import TopBar from '../components/TopBar';
-import BottomBar from '../components/BottomBar';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminMainPage() {
@@ -33,7 +32,6 @@ export default function AdminMainPage() {
           </button>
         </div>
       </div>
-      <BottomBar />
     </div>
   );
 }
