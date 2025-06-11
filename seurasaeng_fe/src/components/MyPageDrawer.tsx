@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import type { MyPageDrawerProps } from '../types/ComponentTypes';
+import { MdAccountCircle } from 'react-icons/md';
 
 const DRAG_CLOSE_THRESHOLD = 80; // px
 const MAX_OVERLAY_OPACITY = 0.18;
@@ -12,6 +13,18 @@ const MyPageDrawer: React.FC<MyPageDrawerProps> = ({ open, onClose, onDrag }) =>
   const overlayRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const navigate = useNavigate();
+
+  // 유저 정보 로드
+  type UserType = { id: number; name: string; email: string; image: string | null; role: string } | null;
+  let user: UserType = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    user = null;
+  }
+  const profileImg = user?.image;
+  const userName = user?.name || '';
+  const userEmail = user?.email || '';
 
   useEffect(() => {
     if (drawerRef.current && overlayRef.current) {
@@ -106,14 +119,18 @@ const MyPageDrawer: React.FC<MyPageDrawerProps> = ({ open, onClose, onDrag }) =>
           {/* 마이페이지 내용 */}
           <div className="flex flex-col items-center mt-12 flex-1">
             <div className="flex justify-center items-center mb-2 border border-gray-100 rounded-full w-26 h-26">
-              <img
-                src="/ceni-face.webp"
-                alt="profile"
-                className="w-20 h-20"
-              />
+              {profileImg ? (
+                <img
+                  src={profileImg}
+                  alt="profile"
+                  className="w-20 h-20 object-cover rounded-full"
+                />
+              ) : (
+                <MdAccountCircle size={80} color="#5382E0" />
+              )}
             </div>
-            <div className="text-sm">세니</div>
-            <div className="text-sm text-gray-500 mb-20">ceni@itcen.com</div>
+            <div className="text-sm">{userName}</div>
+            <div className="text-sm text-gray-500 mb-20">{userEmail}</div>
             <div className="w-full px-8 space-y-4">
               <div onClick={() => { onClose(); navigate('/qr'); }} className="text-sm font-medium">내 QR</div>
               <div onClick={() => { onClose(); navigate('/my-ride-history'); }} className="text-sm font-medium">나의 탑승 내역</div>
