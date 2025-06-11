@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
+import { MdAccountCircle } from 'react-icons/md';
 
 const QrPage: React.FC = () => {
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
@@ -10,6 +11,17 @@ const QrPage: React.FC = () => {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // 유저 정보 로드
+  type UserType = { id: number; name: string; email: string; image: string | null; role: string } | null;
+  let user: UserType = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    user = null;
+  }
+  const profileImg = user?.image;
+  const userName = user?.name || '';
 
   useEffect(() => {
     const fetchQr = async () => {
@@ -82,7 +94,7 @@ const QrPage: React.FC = () => {
               <img src="/itcen-logo.png" alt="itcen 로고" className="w-20 h-auto" />
             </div>
             {/* 이름 */}
-            <div className="text-2xl font-bold text-white mb-2">세니</div>
+            <div className="text-2xl font-bold text-white mb-2">{userName}</div>
             {/* QR+프로필 */}
             <div className="relative flex items-center justify-center mb-6 mt-2">
               {loading ? (
@@ -98,11 +110,15 @@ const QrPage: React.FC = () => {
               ) : (
                 <div className="w-44 h-44 flex items-center justify-center bg-gray-100 rounded-lg text-gray-400">QR 없음</div>
               )}
-              <img
-                src="/ceni-face.webp"
-                alt="Profile"
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-14 h-14 object-contain"
-              />
+              {profileImg ? (
+                <img
+                  src={profileImg}
+                  alt="Profile"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-14 h-14 object-cover rounded-full bg-white"
+                />
+              ) : (
+                <MdAccountCircle size={56} color="#5382E0" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full" />
+              )}
             </div>
             {/* flex-grow로 남는 공간 채우기 */}
             <div className="flex-grow" />
