@@ -17,6 +17,7 @@ export default function NoticePage({ isAdmin = false }) {
   const startXRef = useRef(0);
   const [startY, setStartY] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // 버튼 관련 상수 (중복 제거)
   const BUTTON_WIDTH = 80; // px, w-20
@@ -24,9 +25,12 @@ export default function NoticePage({ isAdmin = false }) {
   const BUTTONS_TOTAL_WIDTH = BUTTON_WIDTH * BUTTON_COUNT;
 
   useEffect(() => {
-    apiClient.get('/notices').then(res => {
-      setNotices(res.data);
-    });
+    setLoading(true);
+    apiClient.get('/notices')
+      .then(res => {
+        setNotices(res.data);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   // 슬라이드 시작
@@ -76,9 +80,11 @@ export default function NoticePage({ isAdmin = false }) {
       <TopBar title={isAdmin ? "공지사항 관리" : "공지사항"} />
       {/* 공지 리스트 */}
       <div className="pt-14 flex-1 px-4">
-        {notices.length === 0 && (
+        {loading ? (
+          <div className="text-center text-gray-400 py-12">불러오는 중...</div>
+        ) : notices.length === 0 ? (
           <div className="text-center text-gray-400 py-12">공지사항이 없습니다.</div>
-        )}
+        ) : null}
         {notices.map(notice => {
           if (isAdmin) {
             const dragX = dragXMap[notice.id] || 0;
