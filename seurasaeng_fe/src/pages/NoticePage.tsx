@@ -76,6 +76,9 @@ export default function NoticePage({ isAdmin = false }) {
       <TopBar title={isAdmin ? "공지사항 관리" : "공지사항"} />
       {/* 공지 리스트 */}
       <div className="pt-14 flex-1 px-4">
+        {notices.length === 0 && (
+          <div className="text-center text-gray-400 py-12">공지사항이 없습니다.</div>
+        )}
         {notices.map(notice => {
           if (isAdmin) {
             const dragX = dragXMap[notice.id] || 0;
