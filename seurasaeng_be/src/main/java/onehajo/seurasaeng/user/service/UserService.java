@@ -5,8 +5,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.entity.Manager;
+import onehajo.seurasaeng.entity.Newnoti;
 import onehajo.seurasaeng.entity.Shuttle;
 import onehajo.seurasaeng.entity.User;
+import onehajo.seurasaeng.newnoti.repository.NewnotiRepository;
 import onehajo.seurasaeng.qr.service.QRService;
 import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
 import onehajo.seurasaeng.qr.exception.UserNotFoundException;
@@ -32,13 +34,14 @@ public class UserService {
     private final RedisTokenService redisTokenService;
     private final ShuttleRepository shuttleRepository;
     private final QRService qrService;
+    private final NewnotiRepository newNotiRepository;
 
 
     public UserService(UserRepository userRepository, ManagerRepository managerRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil,
                        RedisTokenService redisTokenService, ShuttleRepository shuttleRepository,
-                       QRService qrService) {
+                       QRService qrService, NewnotiRepository newNotiRepository) {
         this.userRepository = userRepository;
         this.managerRepository = managerRepository;
         this.passwordEncoder = passwordEncoder;
@@ -46,6 +49,7 @@ public class UserService {
         this.redisTokenService = redisTokenService;
         this.shuttleRepository = shuttleRepository;
         this.qrService = qrService;
+        this.newNotiRepository = newNotiRepository;
     }
 
     @Transactional
@@ -141,6 +145,7 @@ public class UserService {
                 .email(user.getEmail())
                 .image(user.getImage())
                 .role("user")
+                .read_newnoti(user.isRead_newnoti())
                 .build();
     }
 
@@ -163,6 +168,7 @@ public class UserService {
                 .id(manager.getId())
                 .email(manager.getEmail())
                 .role("admin")
+                .read_newnoti(false)
                 .build();
     }
 
@@ -239,5 +245,20 @@ public class UserService {
                 .favoritesWorkId(user.getFavorites_work_id().getId())
                 .favoritesHomeId(user.getFavorites_home_id().getId())
                 .build();
+    }
+
+    public void readNoti(HttpServletRequest request, long id) {
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        Long userid = jwtUtil.getIdFromToken(token);
+
+        User user = userRepository.findById(userid).orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
+
+        Optional<Newnoti> existingNewnoti = newNotiRepository.findFirstByOrderByIdAsc();
+        if (existingNewnoti.isPresent() && existingNewnoti.get().getId().equals(id)) {
+            user.setRead_newnoti(true);
+            userRepository.save(user);
+            userRepository.flush();
+        }
+
     }
 }
