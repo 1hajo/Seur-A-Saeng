@@ -4,9 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.entity.Manager;
-import onehajo.seurasaeng.entity.Newnoti;
 import onehajo.seurasaeng.entity.Noti;
-import onehajo.seurasaeng.entity.Popup;
 import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
 import onehajo.seurasaeng.newnoti.repository.NewnotiRepository;
 import onehajo.seurasaeng.noti.dto.NotiReqDTO;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -25,13 +22,11 @@ import java.util.stream.Collectors;
 public class NotiService {
     private final ManagerRepository managerRepository;
     private final NotiRepository notiRepository;
-    private final NewnotiRepository newNotiRepository;
     private final JwtUtil jwtUtil;
 
-    public NotiService(ManagerRepository managerRepository, NotiRepository notiRepository, NewnotiRepository newNotiRepository, JwtUtil jwtUtil) {
+    public NotiService(ManagerRepository managerRepository, NotiRepository notiRepository, JwtUtil jwtUtil) {
         this.managerRepository = managerRepository;
         this.notiRepository = notiRepository;
-        this.newNotiRepository = newNotiRepository;
         this.jwtUtil = jwtUtil;
     }
 
