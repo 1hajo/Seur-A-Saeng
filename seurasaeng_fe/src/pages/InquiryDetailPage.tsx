@@ -1,45 +1,58 @@
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useState } from "react";
-import inquiries from "../mocks/inquiriesMock";
+import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import apiClient from '../libs/axios';
 import BottomBar from '../components/BottomBar';
 import TopBar from '../components/TopBar';
 
 const InquiryDetailPage = ({ isAdmin = false }) => {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  // location.state로 받은 객체가 있으면 그걸로, 없으면 mock에서 찾기
-  const inquiry = location.state
-    ? {
-        id: location.state.inquiry_id,
-        title: location.state.title,
-        content: location.state.content,
-        user_name: location.state.user_name,
-        date: location.state.created_at,
-        status: location.state.answer_status ? '답변완료' : '답변대기',
-        answer: location.state.answer || '',
-        answerDate: location.state.answered_at || '',
-      }
-    : inquiries.find(q => q.id === Number(id));
+  const [loading, setLoading] = useState(true);
   const [answer, setAnswer] = useState('');
 
+  type InquiryType = {
+    id: number;
+    title: string;
+    content: string;
+    user_name?: string;
+    created_at?: string;
+    date?: string;
+    answer?: string;
+    answered_at?: string;
+    answer_status?: boolean;
+  } | null;
+  const [inquiry, setInquiry] = useState<InquiryType>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    apiClient.get(`/inquiries/${id}`)
+      .then(res => {
+        setInquiry(res.data);
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16 flex flex-col">
+        <TopBar title="1:1 문의" />
+        <div className="flex-1 flex items-center justify-center text-gray-400">로딩 중...</div>
+        <BottomBar />
+      </div>
+    );
+  }
   if (!inquiry) {
     return (
       <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16 flex flex-col">
-        <div className="flex items-center h-14 px-4 bg-[#5382E0] border-b border-[#5382E0]">
-          <button className="absolute left-4" onClick={() => navigate(-1)}>
-            <img src="/back.png" alt="뒤로가기" className="w-6 h-6 invert brightness-0" />
-          </button>
-          <span className="flex-1 text-center text-white font-bold text-lg">1:1 문의</span>
-        </div>
+        <TopBar title="1:1 문의" />
         <div className="flex-1 flex items-center justify-center text-gray-400">존재하지 않는 문의입니다.</div>
         <BottomBar />
       </div>
     );
   }
 
-  // 날짜와 시간 포맷팅
-  const dateObj = new Date(inquiry.date);
+  const dateStr = inquiry.created_at || inquiry.date || '';
+  const dateObj = new Date(dateStr);
   const formattedDate = `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
 
   const handleAnswerSubmit = () => {
@@ -59,7 +72,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
       <div className="px-5 pt-20 pb-2">
         <div className="text-[#5382E0] font-bold text-base mb-1">{inquiry.title}</div>
         <div className="text-xs text-gray-400 mb-4">{formattedDate}</div>
-        <span className="inline-block text-xs bg-[#5382E0] text-white rounded px-2 py-0.5 font-semibold mb-2">{inquiry.status}</span>
+        <span className="inline-block text-xs bg-[#5382E0] text-white rounded px-2 py-0.5 font-semibold mb-2">{inquiry.answer_status ? '답변완료' : '답변대기'}</span>
       </div>
 
       {/* 문의 내용 */}
@@ -73,15 +86,14 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
           <div className="mx-5 text-xs text-gray-400 mb-1 font-semibold">관리자 답변</div>
           <div className="mx-5 mb-2 bg-white border border-gray-400 rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
             {inquiry.answer}
-            {inquiry.answerDate && (
+            {inquiry.answered_at && (
               <div className="mt-3 text-xs text-gray-400">
                 답변일: {(() => {
-                  // answerDate가 yyyy-MM-dd HH:mm 또는 yyyy-MM-dd HH:mm:ss 등 -로 되어 있으면 .으로 변환
-                  const match = inquiry.answerDate.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+                  const match = (inquiry.answered_at || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
                   if (match) {
                     return `${match[1]}.${match[2]}.${match[3]} ${match[4]}:${match[5]}`;
                   }
-                  return inquiry.answerDate;
+                  return inquiry.answered_at;
                 })()}
               </div>
             )}

@@ -25,6 +25,7 @@ function getStatusBadge(status: string) {
 export default function MyInquiryPage({ isAdmin = false }) {
   const navigate = useNavigate();
   const [inquiries, setInquiries] = useState<InquiryListItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [draggedId, setDraggedId] = useState<number|null>(null);
   const [dragXMap, setDragXMap] = useState<{[id:number]:number}>({});
   const startXRef = useRef(0);
@@ -34,6 +35,8 @@ export default function MyInquiryPage({ isAdmin = false }) {
   useEffect(() => {
     apiClient.get('/inquiries').then(res => {
       setInquiries(res.data);
+    }).finally(() => {
+      setLoading(false);
     });
   }, []);
 
@@ -83,50 +86,56 @@ export default function MyInquiryPage({ isAdmin = false }) {
       <div className="border-b border-gray-100" />
       {/* 문의 목록 */}
       <div className="flex-1 pl-4 pt-14">
-        {inquiries.map(inquiry => {
-          const dragX = dragXMap[inquiry.id] || 0;
-          const isDragging = draggedId === inquiry.id;
-          return (
-            <div key={inquiry.id} className="relative overflow-hidden">
-              {/* 문의 카드 */}
-              <div
-                className="py-3 border-b border-gray-100 bg-white pr-20"
-                style={{
-                  transform: `translateX(${dragX}px)`,
-                  transition: isDragging ? 'none' : 'transform 0.2s',
-                }}
-                onTouchStart={e => handleTouchStart(e, inquiry.id)}
-                onTouchMove={e => handleTouchMove(e, inquiry.id)}
-                onTouchEnd={() => handleTouchEnd(inquiry.id)}
-                onClick={() => navigate(isAdmin ? `/admin/inquiry/${inquiry.id}` : `/inquiry/${inquiry.id}`)}
-              >
-                <div className="font-bold text-sm mb-1">{inquiry.title}</div>
-                <div className="text-xs text-gray-400 mb-1">
-                  {(() => {
-                    const dateObj = new Date(inquiry.created_at || inquiry.date);
-                    if (isNaN(dateObj.getTime())) return inquiry.created_at || inquiry.date;
-                    return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
-                  })()}
+        {loading ? null : (
+          inquiries.length === 0 ? (
+            <div className="text-center text-gray-400 py-16 text-base">문의 내역이 없습니다.</div>
+          ) : (
+            inquiries.map(inquiry => {
+              const dragX = dragXMap[inquiry.id] || 0;
+              const isDragging = draggedId === inquiry.id;
+              return (
+                <div key={inquiry.id} className="relative overflow-hidden">
+                  {/* 문의 카드 */}
+                  <div
+                    className="py-3 border-b border-gray-100 bg-white pr-20"
+                    style={{
+                      transform: `translateX(${dragX}px)`,
+                      transition: isDragging ? 'none' : 'transform 0.2s',
+                    }}
+                    onTouchStart={e => handleTouchStart(e, inquiry.id)}
+                    onTouchMove={e => handleTouchMove(e, inquiry.id)}
+                    onTouchEnd={() => handleTouchEnd(inquiry.id)}
+                    onClick={() => navigate(isAdmin ? `/admin/inquiry/${inquiry.id}` : `/inquiry/${inquiry.id}`)}
+                  >
+                    <div className="font-bold text-sm mb-1">{inquiry.title}</div>
+                    <div className="text-xs text-gray-400 mb-1">
+                      {(() => {
+                        const dateObj = new Date(inquiry.created_at);
+                        if (isNaN(dateObj.getTime())) return inquiry.created_at;
+                        return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+                      })()}
+                    </div>
+                    {getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기') && (
+                      <div className="mt-0.5">{getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기')}</div>
+                    )}
+                  </div>
+                  {/* 삭제 버튼 */}
+                  <button
+                    className="absolute top-0 h-full w-20 bg-red-500 text-white font-bold text-base z-10 duration-300"
+                    style={{
+                      left: `calc(100% + ${dragX}px)`,
+                      transition: isDragging ? 'none' : 'left 0.2s',
+                      pointerEvents: Math.abs(dragX) > 40 ? 'auto' : 'none',
+                    }}
+                    onClick={() => {/* 삭제 기능 구현 필요시 여기에 */}}
+                  >
+                    삭제
+                  </button>
                 </div>
-                {getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기') && (
-                  <div className="mt-0.5">{getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기')}</div>
-                )}
-              </div>
-              {/* 삭제 버튼 */}
-              <button
-                className="absolute top-0 h-full w-20 bg-red-500 text-white font-bold text-base z-10 duration-300"
-                style={{
-                  left: `calc(100% + ${dragX}px)`,
-                  transition: isDragging ? 'none' : 'left 0.2s',
-                  pointerEvents: Math.abs(dragX) > 40 ? 'auto' : 'none',
-                }}
-                onClick={() => {/* 삭제 기능 구현 필요시 여기에 */}}
-              >
-                삭제
-              </button>
-            </div>
-          );
-        })}
+              );
+            })
+          )
+        )}
       </div>
       {/* 문의하기 FAB 버튼 - 하단 중앙 */}
       {!isAdmin && (
