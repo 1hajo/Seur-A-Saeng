@@ -70,7 +70,7 @@ public class QRService {
 
     private User validateUserExists(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     /**
