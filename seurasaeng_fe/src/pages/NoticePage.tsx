@@ -69,9 +69,13 @@ export default function NoticePage({ isAdmin = false }) {
   };
 
   // 삭제 핸들러 (실제 삭제 로직은 추후 구현)
-  const handleDelete = () => {
-    // TODO: 삭제 로직 구현
-    alert('삭제 기능은 아직 구현되지 않았습니다.');
+  const handleDelete = async (id: number) => {
+    try {
+      await apiClient.delete(`/notices/${id}`);
+      setNotices(prev => prev.filter(notice => notice.id !== id));
+    } catch {
+      alert('공지 삭제에 실패했습니다.');
+    }
   };
 
   return (
@@ -129,7 +133,7 @@ export default function NoticePage({ isAdmin = false }) {
                   </button>
                   <button
                     className="w-20 h-full bg-red-500 text-white font-bold text-base duration-300"
-                    onClick={handleDelete}
+                    onClick={() => handleDelete(notice.id)}
                   >
                     삭제
                   </button>
