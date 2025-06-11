@@ -37,10 +37,11 @@ export default function RegisterPage() {
         password,
         role: 'user',
       });
-      // JWT 토큰이 res.data(token)으로 온다고 가정
-      const token = res.data;
+      // 응답 객체에서 token과 user 정보 분리
+      const { token, ...userFields } = res.data;
       if (token) {
         localStorage.setItem('accessToken', token);
+        localStorage.setItem('user', JSON.stringify(userFields));
         navigate('/main'); // 회원가입 후 메인 페이지로 이동
       } else {
         setError('토큰이 응답에 없습니다.');

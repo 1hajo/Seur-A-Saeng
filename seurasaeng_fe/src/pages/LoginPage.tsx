@@ -17,9 +17,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await apiClient.post('/users/login', { email, password });
-      const token = res.data?.token;
+      const { token, ...userFields } = res.data;
       if (token) {
         localStorage.setItem('accessToken', token);
+        localStorage.setItem('user', JSON.stringify(userFields));
         navigate('/main');
       } else {
         setError('토큰이 응답에 없습니다.');
