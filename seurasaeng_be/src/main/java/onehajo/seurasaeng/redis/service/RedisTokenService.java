@@ -3,8 +3,6 @@ package onehajo.seurasaeng.redis.service;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-
 @Service
 public class RedisTokenService {
 
@@ -17,7 +15,7 @@ public class RedisTokenService {
     }
 
     // 토큰 저장
-    public void saveToken(long id, String token, long expirationMillis) {
+    public void saveToken(long id, String token) {
         redisTemplate.opsForValue().set(TOKEN_PREFIX + id, token);
     }
 
