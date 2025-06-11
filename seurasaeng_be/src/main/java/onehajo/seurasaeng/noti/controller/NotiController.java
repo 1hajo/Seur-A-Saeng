@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.noti.dto.NotiReqDTO;
 import onehajo.seurasaeng.noti.dto.NotiResDTO;
 import onehajo.seurasaeng.noti.service.NotiService;
+import onehajo.seurasaeng.popup.service.PopupService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +19,11 @@ import java.util.List;
 public class NotiController {
 
     private final NotiService notiService;
+    private final PopupService popupService;
 
-    public NotiController(NotiService notiService) {
+    public NotiController(NotiService notiService, PopupService popupService) {
         this.notiService = notiService;
+        this.popupService = popupService;
     }
 
     @Transactional
@@ -50,4 +53,17 @@ public class NotiController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @PostMapping("/{id}/popup")
+    public ResponseEntity<?> setPopup(@PathVariable Long id) throws Exception {
+        popupService.set(id);
+
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("/popup")
+    public ResponseEntity<?> searchPopup() throws Exception {
+        NotiResDTO notiResDTO = popupService.read();
+
+        return new ResponseEntity<>(notiResDTO, HttpStatus.OK);
+    }
 }

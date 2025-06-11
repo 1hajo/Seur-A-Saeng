@@ -77,6 +77,7 @@ public class NotiService {
         return NotiResDTO.builder()
                 .id(noti.getId())
                 .title(noti.getTitle())
+                .content(noti.getContent())
                 .created_at(noti.getCreated_at())
                 .build();
     }
