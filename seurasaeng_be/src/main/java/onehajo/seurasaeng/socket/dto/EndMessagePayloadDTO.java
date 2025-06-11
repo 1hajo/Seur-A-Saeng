@@ -1,7 +1,6 @@
 package onehajo.seurasaeng.socket.dto;
 
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -11,11 +10,14 @@ import java.time.format.DateTimeFormatter;
 /**
  * 운행 종료 시 클라이언트로 전송할 메시지 DTO
  */
-@Getter
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class EndMessagePayloadDTO {
-    private final MessageType type;
-    private final String timestamp;
+    private MessageType type;
+    private String timestamp;
 
     private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
