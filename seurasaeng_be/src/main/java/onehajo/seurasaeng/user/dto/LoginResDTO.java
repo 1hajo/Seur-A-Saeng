@@ -12,4 +12,5 @@ public class LoginResDTO {
     private String email;
     private String image;
     private String role;
+    private boolean read_newnoti;
 }

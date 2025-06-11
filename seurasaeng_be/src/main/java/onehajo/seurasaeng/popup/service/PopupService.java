@@ -9,6 +9,8 @@ import onehajo.seurasaeng.noti.repository.NotiRepository;
 import onehajo.seurasaeng.popup.repository.PopupRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Slf4j
 @Service
 public class PopupService {
@@ -24,9 +26,9 @@ public class PopupService {
     public void set(long id) throws Exception {
         Noti noti = notiRepository.findById(id).orElseThrow(() -> new Exception("공지가 존재하지 않습니다."));
 
-        long notiId = popupRepository.findAll().getFirst().getId();
-        // 기존 popup 삭제
-        popupRepository.deleteById(notiId);
+        // 기존 popup이 있다면 삭제
+        Optional<Popup> existingPopup = popupRepository.findFirstByOrderByIdAsc();
+        existingPopup.ifPresent(popup -> popupRepository.deleteById(popup.getId()));
 
         // 새로운 popup 선정
         Popup popup = Popup.builder()
