@@ -1,11 +1,18 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomBar from '../components/BottomBar';
-import notices from '../mocks/noticesMock';
 import TopBar from '../components/TopBar';
+import apiClient from '../libs/axios';
 
 export default function NoticePage({ isAdmin = false }) {
   const navigate = useNavigate();
+  type NoticeType = {
+    id: number;
+    title: string;
+    content: string | null;
+    created_at: string;
+  };
+  const [notices, setNotices] = useState<NoticeType[]>([]);
   const [draggedId, setDraggedId] = useState<number|null>(null);
   const [dragXMap, setDragXMap] = useState<{[id:number]:number}>({});
   const startXRef = useRef(0);
@@ -16,6 +23,12 @@ export default function NoticePage({ isAdmin = false }) {
   const BUTTON_WIDTH = 80; // px, w-20
   const BUTTON_COUNT = 2;
   const BUTTONS_TOTAL_WIDTH = BUTTON_WIDTH * BUTTON_COUNT;
+
+  useEffect(() => {
+    apiClient.get('/notices').then(res => {
+      setNotices(res.data);
+    });
+  }, []);
 
   // 슬라이드 시작
   const handleTouchStart = (e: React.TouchEvent, id: number) => {
@@ -84,8 +97,8 @@ export default function NoticePage({ isAdmin = false }) {
                   <div className="font-bold text-sm mb-1">{notice.title}</div>
                   <div className="text-xs text-gray-400 mb-2">
                     {(() => {
-                      const dateObj = new Date(notice.date);
-                      if (isNaN(dateObj.getTime())) return notice.date;
+                      const dateObj = new Date(notice.created_at);
+                      if (isNaN(dateObj.getTime())) return notice.created_at;
                       return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
                     })()}
                   </div>
@@ -125,8 +138,8 @@ export default function NoticePage({ isAdmin = false }) {
                 <div className="font-bold text-sm mb-1">{notice.title}</div>
                 <div className="text-xs text-gray-400 mb-2">
                   {(() => {
-                    const dateObj = new Date(notice.date);
-                    if (isNaN(dateObj.getTime())) return notice.date;
+                    const dateObj = new Date(notice.created_at);
+                    if (isNaN(dateObj.getTime())) return notice.created_at;
                     return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
                   })()}
                 </div>
