@@ -3,12 +3,14 @@ package onehajo.seurasaeng.qr.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.qr.dto.BoardingRecordResDTO;
+import onehajo.seurasaeng.qr.exception.DuplicateBoardingException;
 import onehajo.seurasaeng.qr.repository.BoardingRepository;
 import onehajo.seurasaeng.shuttle.repository.ShuttleRepository;
 import onehajo.seurasaeng.entity.Boarding;
 import onehajo.seurasaeng.entity.Shuttle;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import onehajo.seurasaeng.shuttle.exception.ShuttleNotFoundException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,7 +32,7 @@ public class BoardingService {
      */
     public Boarding saveBoardingRecord(Long user_id, Long shuttle_id) {
         Shuttle shuttle = shuttleRepository.findById(shuttle_id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 셔틀입니다."));
+                .orElseThrow(() -> new ShuttleNotFoundException(shuttle_id));
 
         Boarding boardingRecord = Boarding.builder()
                 .user_id(user_id)
@@ -56,7 +58,7 @@ public class BoardingService {
 
     private BoardingRecordResDTO converToBoardingRecordDTO(Boarding boarding) {
         Shuttle shuttle = shuttleRepository.findById(boarding.getShuttle().getId())
-                .orElseThrow(() -> new RuntimeException("셔틀 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ShuttleNotFoundException(boarding.getShuttle().getId()));
 
         return BoardingRecordResDTO.builder()
                 .boarding_id(boarding.getId())
@@ -127,7 +129,7 @@ public class BoardingService {
                         userId, shuttleId, todayStart, todayEnd);
 
         if (alreadyBoardedToday) {
-            throw new IllegalArgumentException("오늘 이미 해당 셔틀에 탑승하셨습니다.");
+            throw new DuplicateBoardingException("오늘 이미 해당 셔틀에 탑승하셨습니다.");
         }
     }
 }
