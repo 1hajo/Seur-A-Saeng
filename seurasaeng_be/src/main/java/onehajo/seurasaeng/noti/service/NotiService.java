@@ -6,9 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.entity.Manager;
 import onehajo.seurasaeng.entity.Noti;
 import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
+import onehajo.seurasaeng.newnoti.repository.NewnotiRepository;
 import onehajo.seurasaeng.noti.dto.NotiReqDTO;
 import onehajo.seurasaeng.noti.dto.NotiResDTO;
 import onehajo.seurasaeng.noti.repository.NotiRepository;
+import onehajo.seurasaeng.popup.repository.PopupRepository;
 import onehajo.seurasaeng.util.JwtUtil;
 import org.springframework.stereotype.Service;
 
@@ -21,12 +23,16 @@ import java.util.stream.Collectors;
 public class NotiService {
     private final ManagerRepository managerRepository;
     private final NotiRepository notiRepository;
+    private final NewnotiRepository newNotiRepository;
     private final JwtUtil jwtUtil;
+    private final PopupRepository popupRepository;
 
-    public NotiService(ManagerRepository managerRepository, NotiRepository notiRepository, JwtUtil jwtUtil) {
+    public NotiService(ManagerRepository managerRepository, NotiRepository notiRepository, NewnotiRepository newNotiRepository, JwtUtil jwtUtil, PopupRepository popupRepository) {
         this.managerRepository = managerRepository;
         this.notiRepository = notiRepository;
+        this.newNotiRepository = newNotiRepository;
         this.jwtUtil = jwtUtil;
+        this.popupRepository = popupRepository;
     }
 
     @Transactional
@@ -67,7 +73,22 @@ public class NotiService {
     }
 
     public void delete(Long id) throws Exception {
-        Noti noti = notiRepository.findById(id).orElseThrow(() -> new RuntimeException("공지가 존재하지 않습니다."));
+        Noti noti = notiRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("공지가 존재하지 않습니다."));
+
+        boolean existsInPopup = popupRepository.findAll().stream()
+                .anyMatch(p -> p.getNoti_id().getId().equals(id));
+        if (existsInPopup) {
+            popupRepository.deleteAll();
+            popupRepository.flush();
+        }
+
+        boolean existsInNewNoti = newNotiRepository.findAll().stream()
+                .anyMatch(n -> n.getNoti_id().getId().equals(id));
+        if (existsInNewNoti) {
+            newNotiRepository.deleteAll();
+            newNotiRepository.flush();
+        }
 
         notiRepository.delete(noti);
         notiRepository.flush();
