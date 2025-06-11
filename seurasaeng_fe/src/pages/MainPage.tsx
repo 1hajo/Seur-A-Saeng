@@ -97,6 +97,13 @@ export default function MainPage() {
     return `translateX(${translateX}vw)`;
   };
 
+  // read_newnoti 값 가져오기
+  let readNewNoti = false;
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    readNewNoti = !!user?.read_newnoti;
+  } catch {/* ignore */}
+
   return (
     <div className="flex flex-col h-[calc(var(--vh,1vh)*100)] bg-[#fdfdfe] px-4 pt-6 pb-2 relative">
       {/* 팝업 모달 */}
@@ -148,7 +155,9 @@ export default function MainPage() {
             <span className="font-bold text-base text-[#5382E0]">공지</span>
             <span className="text-xs mb-2 text-[#5382E0] w-36 text-left">바로 셔틀 공지를 확인하세요.</span>
             <span className="ml-auto mt-auto"><img src="/announcement.png" alt="공지" className="w-7 h-7" /></span>
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+            {readNewNoti && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+            )}
           </button>
           <button className="col-span-1 bg-[#DEE9FF] rounded-xl p-4 flex flex-col items-start shadow-sm min-h-[90px]" onClick={() => navigate('/timetable')}>
             <span className="font-bold text-base text-[#5382E0]">시간표</span>
