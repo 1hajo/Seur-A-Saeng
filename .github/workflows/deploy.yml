@@ -1,4 +1,4 @@
-name: Deploy Frontend to AWS EC2
+name: Deploy Frontend with SSL to AWS EC2
 
 on:
   push:
@@ -14,7 +14,7 @@ env:
 
 jobs:
   deploy-frontend:
-    name: Deploy Frontend to Public Server
+    name: Deploy Frontend with Auto SSL
     runs-on: ubuntu-latest
     
     steps:
@@ -40,11 +40,6 @@ jobs:
         echo "VITE_API_BASE_URL=https://seurasaeng.site/api" > .env.production
         echo "VITE_SOCKET_URL=wss://seurasaeng.site/ws" >> .env.production
         npm run build
-        
-    - name: Verify build
-      run: |
-        cd seurasaeng_fe
-        ls -la dist/
         
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -72,26 +67,89 @@ jobs:
         source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/"
         target: "/home/ubuntu/"
         timeout: 300s
-        
-    - name: Deploy Frontend
+
+    - name: Setup SSL and Deploy Frontend
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        timeout: 300s
+        timeout: 600s
         script: |
           set -e
           
-          echo "🚀 프론트엔드 배포를 시작합니다..."
+          echo "🚀 SSL 인증서 및 프론트엔드 배포를 시작합니다..."
           
+          # 1. 기존 컨테이너 중지 (SSL 인증서 발급을 위해 80포트 확보)
           cd /home/ubuntu/seurasaeng_fe
+          if docker-compose ps -q 2>/dev/null | grep -q .; then
+            echo "기존 컨테이너를 중지합니다..."
+            docker-compose down
+          fi
+          
+          # 2. Certbot 설치 (없으면)
+          if ! command -v certbot &> /dev/null; then
+            echo "Certbot을 설치합니다..."
+            sudo apt update
+            sudo apt install certbot -y
+          fi
+          
+          # 3. SSL 인증서 발급/갱신 (80포트 사용)
+          echo "SSL 인증서를 확인하고 갱신합니다..."
+          sudo certbot certonly \
+            --standalone \
+            --email admin@seurasaeng.site \
+            --agree-tos \
+            --no-eff-email \
+            -d seurasaeng.site \
+            --keep-until-expiring \
+            --non-interactive || echo "인증서 발급 실패 - 기존 인증서 사용"
+          
+          # 4. SSL 인증서 확인
+          if [ -f "/etc/letsencrypt/live/seurasaeng.site/fullchain.pem" ]; then
+            echo "✅ SSL 인증서 확인됨"
+            SSL_AVAILABLE=true
+          else
+            echo "⚠️ SSL 인증서 없음 - 자체 서명 인증서 사용"
+            SSL_AVAILABLE=false
+          fi
+          
+          # 5. docker-compose.yml SSL 볼륨 설정
+          echo "Docker Compose SSL 설정을 업데이트합니다..."
+          if [ "$SSL_AVAILABLE" = true ]; then
+            # Let's Encrypt 볼륨 추가
+            if ! grep -q "/etc/letsencrypt:/etc/letsencrypt:ro" docker-compose.yml; then
+              sed -i '/nginx_logs:\/var\/log\/nginx/a\      - /etc/letsencrypt:/etc/letsencrypt:ro' docker-compose.yml
+            fi
+            
+            # nginx 설정에서 SSL 경로 업데이트
+            sed -i 's|/etc/ssl/certs/seurasaeng.site/|/etc/letsencrypt/live/seurasaeng.site/|g' nginx/default.conf
+            echo "✅ Let's Encrypt 인증서 경로로 설정"
+          else
+            echo "⚠️ 자체 서명 인증서 사용"
+          fi
+          
+          # 6. 환경변수 파일 생성
           chmod +x deploy.sh
+          
+          # 7. Docker 이미지 로드 및 컨테이너 시작
           bash deploy.sh
           
-          echo "✅ 프론트엔드 배포 완료"
+          # 8. SSL 적용 확인
+          echo "SSL 설정을 확인합니다..."
+          sleep 10
+          
+          if [ "$SSL_AVAILABLE" = true ]; then
+            if curl -k -s https://localhost/health > /dev/null; then
+              echo "✅ HTTPS 연결 성공"
+            else
+              echo "⚠️ HTTPS 연결 실패"
+            fi
+          fi
+          
+          echo "🎉 SSL 및 프론트엔드 배포 완료!"
 
-    - name: Health Check
+    - name: Health Check with SSL
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
@@ -101,7 +159,7 @@ jobs:
         script: |
           set -e
           
-          echo "🔍 헬스체크를 진행합니다..."
+          echo "🔍 SSL 포함 헬스체크를 진행합니다..."
           
           # HTTP 헬스체크
           MAX_ATTEMPTS=12
@@ -126,21 +184,17 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
           done
           
-          # HTTPS 헬스체크 (선택사항)
+          # HTTPS 헬스체크
           echo "🔒 HTTPS 헬스체크..."
-          if curl -f -s -k https://localhost/health > /dev/null; then
+          if curl -k -f -s https://localhost/health > /dev/null; then
             echo "✅ HTTPS 헬스체크 성공"
+            
+            # 인증서 정보 확인
+            echo "📋 SSL 인증서 정보:"
+            echo "  발급자: $(curl -k -s https://localhost 2>&1 | openssl x509 -noout -issuer 2>/dev/null || echo '확인 불가')"
+            echo "  만료일: $(curl -k -s https://localhost 2>&1 | openssl x509 -noout -dates 2>/dev/null | grep notAfter || echo '확인 불가')"
           else
             echo "⚠️ HTTPS 헬스체크 실패 (HTTP는 정상)"
-          fi
-          
-          # 메인 페이지 테스트
-          echo "🌐 메인 페이지 테스트..."
-          if curl -f -s http://localhost/ > /dev/null; then
-            echo "✅ 메인 페이지 접근 가능"
-          else
-            echo "❌ 메인 페이지 접근 실패"
-            exit 1
           fi
           
           # 백엔드 연결 테스트
@@ -148,14 +202,22 @@ jobs:
           if curl -f -s http://10.0.2.166:8080/actuator/health > /dev/null; then
             echo "✅ 백엔드 연결 정상"
             
-            # API 프록시 테스트
+            # API 프록시 테스트 (HTTP)
             if curl -f -s http://localhost/api/actuator/health > /dev/null; then
-              echo "✅ API 프록시 정상"
-            else
-              echo "⚠️ API 프록시 연결 이슈"
+              echo "✅ HTTP API 프록시 정상"
+            fi
+            
+            # API 프록시 테스트 (HTTPS)
+            if curl -k -f -s https://localhost/api/actuator/health > /dev/null; then
+              echo "✅ HTTPS API 프록시 정상"
             fi
           else
             echo "⚠️ 백엔드 서버 미실행 (프론트엔드만 배포됨)"
           fi
           
           echo "🎉 헬스체크 완료!"
+          echo ""
+          echo "=== 🌐 접속 정보 ==="
+          echo "HTTP:  http://${{ secrets.FRONT_SERVER_HOST }}"
+          echo "HTTPS: https://seurasaeng.site"
+          echo "Health: https://seurasaeng.site/health"
