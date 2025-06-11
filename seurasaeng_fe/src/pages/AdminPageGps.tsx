@@ -7,7 +7,6 @@ import type { GpsPayload } from "../types/GpsPayload";
 import type { DropdownOption } from "../types/DropdownOption";
 import apiClient from "../libs/axios";
 import TopBar from '../components/TopBar';
-import BottomBar from '../components/BottomBar';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -269,7 +268,6 @@ function AdminPage() {
           )}
         </div>
       </div>
-      <BottomBar />
     </div>
   );
 }

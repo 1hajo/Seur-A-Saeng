@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import BottomBar from '../components/BottomBar';
 import apiClient from '../libs/axios';
 import SlideTab from '../components/SlideTab';
 import TopBar from '../components/TopBar';
@@ -428,8 +427,6 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
           ))
         )}
       </div>
-      {/* 하단바 */}
-      <BottomBar />
       {/* 하단 고정 완료/취소 바 (수정 모드에서만) */}
       {isEditMode && (
         <div className="bottom-0 left-0 right-0 z-30 bg-white flex h-16 px-4 gap-3 items-center justify-center">

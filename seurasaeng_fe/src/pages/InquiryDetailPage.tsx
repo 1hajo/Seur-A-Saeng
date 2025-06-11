@@ -1,7 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import apiClient from '../libs/axios';
-import BottomBar from '../components/BottomBar';
 import TopBar from '../components/TopBar';
 
 const InquiryDetailPage = ({ isAdmin = false }) => {
@@ -118,7 +117,6 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
           </button>
         </div>
       )}
-      <BottomBar />
     </div>
   );
 };
