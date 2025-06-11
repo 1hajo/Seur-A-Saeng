@@ -21,7 +21,11 @@ export default function LoginPage() {
       if (token) {
         localStorage.setItem('accessToken', token);
         localStorage.setItem('user', JSON.stringify(userFields));
-        navigate('/main');
+        if (userFields.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/main');
+        }
       } else {
         setError('토큰이 응답에 없습니다.');
       }
