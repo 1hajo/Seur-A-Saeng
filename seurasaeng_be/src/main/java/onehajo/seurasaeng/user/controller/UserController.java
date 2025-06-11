@@ -77,16 +77,16 @@ public class UserController {
         Optional<User> user = userRepository.findByEmail(request.getEmail());
         if (user.isPresent()) {
             loginResDTO = userService.loginUser(request);
-        }
-        else {
-            Optional<Manager> manager = managerRepository.findByEmail(request.getEmail());
-            if (manager.isPresent()) {
-                loginResDTO = userService.loginAdmin(request);
-            }
-            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            return ResponseEntity.ok(loginResDTO);
         }
 
-        return ResponseEntity.ok(loginResDTO);
+        Optional<Manager> manager = managerRepository.findByEmail(request.getEmail());
+        if (manager.isPresent()) {
+            loginResDTO = userService.loginAdmin(request);
+            return ResponseEntity.ok(loginResDTO);
+        }
+
+        throw new RuntimeException("사용자를 찾을 수 없습니다.");
     }
 
     @PostMapping("/forgot-password")
