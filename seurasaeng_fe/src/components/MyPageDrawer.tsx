@@ -144,6 +144,7 @@ const MyPageDrawer: React.FC<MyPageDrawerProps> = ({ open, onClose, onDrag }) =>
                 className="mt-10 cursor-pointer hover:text-blue-500"
                 onClick={() => {
                   localStorage.removeItem('accessToken');
+                  localStorage.removeItem('user');
                   onClose();
                   navigate('/');
                 }}
