@@ -77,7 +77,7 @@ public class UserService {
         String token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail(), request.getRole());
         qrService.generateQRCode(user.getId(), user.getEmail());
 
-        redisTokenService.saveToken(user.getId(), token, jwtUtil.getExpiration());
+        redisTokenService.saveToken(user.getId(), token);
 
         return LoginResDTO.builder()
                 .token(token)
@@ -110,7 +110,7 @@ public class UserService {
         managerRepository.flush();
 
         String token = jwtUtil.generateTokenAdmin(manager.getId(), manager.getEmail(), request.getRole());
-        redisTokenService.saveToken(manager.getId(), token, jwtUtil.getExpiration());
+        redisTokenService.saveToken(manager.getId(), token);
 
         return LoginResDTO.builder()
                 .token(token)

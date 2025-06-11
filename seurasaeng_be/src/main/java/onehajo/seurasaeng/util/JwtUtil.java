@@ -2,7 +2,6 @@ package onehajo.seurasaeng.util;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,20 +12,14 @@ import java.util.Date;
 public class JwtUtil {
 
     private final Key key;
-    // ✅
-    @Getter
-    private final long expiration;
 
-    public JwtUtil(@Value("${jwt.secret}") String secret,
-                   @Value("${jwt.expiration}") long expiration) {
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
-        this.expiration = expiration;
     }
 
     // ✅ 토큰 생성
     public String generateToken(long id, String name, String email, String role) {
         Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .claim("id", id)
@@ -34,7 +27,6 @@ public class JwtUtil {
                 .claim("email", email)
                 .claim("role", role)
                 .setIssuedAt(now)
-                .setExpiration(expiry)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -42,14 +34,12 @@ public class JwtUtil {
     // ✅ 토큰 생성
     public String generateTokenAdmin(long id, String email, String role) {
         Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .claim("id", id)
                 .claim("email", email)
                 .claim("role", role)
                 .setIssuedAt(now)
-                .setExpiration(expiry)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
