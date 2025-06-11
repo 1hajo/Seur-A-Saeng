@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.entity.Manager;
 import onehajo.seurasaeng.entity.Noti;
 import onehajo.seurasaeng.inquiry.repository.ManagerRepository;
-import onehajo.seurasaeng.newnoti.repository.NewnotiRepository;
 import onehajo.seurasaeng.noti.dto.NotiReqDTO;
 import onehajo.seurasaeng.noti.dto.NotiResDTO;
 import onehajo.seurasaeng.noti.repository.NotiRepository;
