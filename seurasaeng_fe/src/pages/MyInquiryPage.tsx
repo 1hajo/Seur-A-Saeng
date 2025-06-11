@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
-import BottomBar from '../components/BottomBar';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
 
@@ -148,7 +147,6 @@ export default function MyInquiryPage({ isAdmin = false }) {
           <img src="/add.png" alt="문의하기" className="w-8 h-8 brightness-0 invert" />
         </button>
       )}
-      <BottomBar />
     </div>
   );
 }

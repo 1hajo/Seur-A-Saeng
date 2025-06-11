@@ -1,6 +1,5 @@
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import BottomBar from '../components/BottomBar';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
 
@@ -47,7 +46,6 @@ export default function NoticeDetailPage() {
       <div className="mx-5 mb-4 border border-[#DEE9FF] rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
         {notice.content}
       </div>
-      <BottomBar />
     </div>
   );
 }
