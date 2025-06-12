@@ -79,7 +79,7 @@ export default function EmployeeGPSApp() {
         const hour = now.getHours();
         const initialTab: RouteType = hour < 12 ? '출근' : '퇴근';
         setActiveTab(initialTab);
-        setLocationIdx(getFavoriteRouteIndex(initialTab, prefRes.data));
+        setLocationIdx(getFavoriteRouteIndex(initialTab, prefRes.data ?? undefined));
       } catch (err) {
         console.error('[API 호출 에러] Error fetching route data or preferences:', err);
       } finally {
@@ -112,8 +112,13 @@ export default function EmployeeGPSApp() {
 
   useEffect(() => {
     if (routeData) {
-      setLocationIdx(getFavoriteRouteIndex(activeTab, userPrefs));
+      const idx = getFavoriteRouteIndex(activeTab, userPrefs ?? undefined);
+      if (locationIdx !== idx) {
+        setLocationIdx(idx);
+      }
     }
+    // locationIdx는 의존성에서 제외 (setState로 인한 무한루프 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeData, activeTab, userPrefs]);
 
   const selectedRoute = routes[locationIdx] || null;
@@ -135,7 +140,7 @@ export default function EmployeeGPSApp() {
   const handleTabClick = (tab: RouteType) => {
     setActiveTab(tab);
     if (routeData) {
-      setLocationIdx(getFavoriteRouteIndex(tab, userPrefs));
+      setLocationIdx(getFavoriteRouteIndex(tab, userPrefs ?? undefined));
     }
   };
 
@@ -160,14 +165,12 @@ export default function EmployeeGPSApp() {
           className="w-full"
         />
       </div>
-      <div className="flex-1 flex flex-col items-center justify-start pb-24 w-full max-w-xl mx-auto px-4">
-        <div className="w-full aspect-square overflow-hidden shadow mb-6 bg-gray-100 flex items-center justify-center">
-          {isMapReady && selectedRoute ? (
-            <KakaoMap route={selectedRoute} activeTab={activeTab} />
-          ) : (
-            <div>지도를 불러오는 중입니다...</div>
-          )}
-        </div>
+      <div className="flex-1 flex flex-col pb-24 min-h-0">
+        {isMapReady && selectedRoute ? (
+          <KakaoMap route={selectedRoute} activeTab={activeTab} />
+        ) : (
+          <div>지도를 불러오는 중입니다...</div>
+        )}
       </div>
       <BottomBar />
     </div>
