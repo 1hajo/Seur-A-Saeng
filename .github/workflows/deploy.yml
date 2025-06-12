@@ -2,7 +2,7 @@ name: Frontend Deploy
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ main ]
     paths: 
       - 'seurasaeng_fe/**'
 
@@ -20,13 +20,7 @@ jobs:
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          cd /home/ubuntu
-          if [ -d "seurasaeng_fe" ]; then
-            rm -rf seurasaeng_fe
-          fi
-          git clone https://github.com/${{ github.repository }}.git temp_repo
-          mv temp_repo/seurasaeng_fe .
-          rm -rf temp_repo
-          cd seurasaeng_fe
+          cd /home/ubuntu/seurasaeng_fe
+          git pull origin main
           docker-compose down
           docker-compose up -d --build

@@ -19,19 +19,29 @@ jobs:
         host: ${{ secrets.BACK_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        envs: AWS_ACCESS_KEY,AWS_SECRET_KEY,ENCRYPTION_KEY,JWT_KEY
         script: |
-          cd /home/ubuntu
-          if [ -d "seurasaeng_be" ]; then
-            rm -rf seurasaeng_be
-          fi
-          git clone https://github.com/${{ github.repository }}.git temp_repo
-          mv temp_repo/seurasaeng_be .
-          rm -rf temp_repo
-          cd seurasaeng_be
-          export AWS_ACCESS_KEY="${{ secrets.AWS_ACCESS_KEY }}"
-          export AWS_SECRET_KEY="${{ secrets.AWS_SECRET_KEY }}"
-          export ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}"
-          export JWT_KEY="${{ secrets.JWT_KEY }}"
+          cd /home/ubuntu/seurasaeng_be
+          git pull origin main
+          cat > .env << EOF
+          DB_URL=jdbc:postgresql://postgres:5432/postgres
+          DB_USERNAME=postgres
+          DB_PASSWORD=postgres
+          AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
+          AWS_REGION=ap-northeast-2
+          AWS_BUCKET=profile-qrcode
+          ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          REDIS_DB=1
+          CORS_ALLOWED_ORIGINS=https://seurasaeng.site
+          spring.cloud.aws.credentials.access-key=${{ secrets.AWS_ACCESS_KEY }}
+          spring.cloud.aws.credentails.secret-key=${{ secrets.AWS_SECRET_KEY }}
+          spring.cloud.aws.region.static=ap-northeast-2
+          spring.cloud.aws.s3.bucket=profile-qrcode
+          MAIL_USERNAME=youjiyeon4@gmail.com
+          MAIL_PASSWORD=hmqv wsha xdgs hdie
+          JWT_KEY=${{ secrets.JWT_KEY }}
+          EOF
           docker-compose down
           docker-compose up -d --build
