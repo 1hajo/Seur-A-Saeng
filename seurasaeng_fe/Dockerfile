@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-
+# ddd
 ARG VITE_SOCKET_URL=wss://seurasaeng.site/ws
 ARG VITE_API_BASE_URL=https://seurasaeng.site/api
 ARG VITE_MOBILITY_API_KEY
