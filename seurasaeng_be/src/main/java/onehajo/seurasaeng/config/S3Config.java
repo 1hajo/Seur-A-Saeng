@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnProperty(value = "aws.s3.enabled", havingValue = "true", matchIfMissing = false)
 public class S3Config {
     @Value("${spring.cloud.aws.credentials.access-key}")
     private String accessKey;
