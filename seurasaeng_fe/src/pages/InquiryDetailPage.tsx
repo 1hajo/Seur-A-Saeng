@@ -22,6 +22,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
     answer?: string;
     answered_at?: string;
     answer_status?: boolean;
+    inquiry_id?: number;
   } | null;
 
   useEffect(() => {
@@ -57,10 +58,21 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
   const dateObj = new Date(dateStr);
   const formattedDate = `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
 
-  const handleAnswerSubmit = () => {
-    // TODO: 답변 등록 로직 구현
-    alert('답변이 등록되었습니다. (실제 저장은 미구현)');
-    setAnswer('');
+  const handleAnswerSubmit = async () => {
+    if (!id) return;
+    try {
+      await apiClient.post(`/inquiries/${id}/answer`, { content: answer });
+      setAnswer('');
+      // 답변 등록 후 상세 페이지 새로고침
+      setLoading(true);
+      apiClient.get(`/inquiries/${id}`)
+        .then(res => {
+          setInquiry(res.data);
+        })
+        .finally(() => setLoading(false));
+    } catch {
+      alert('답변 등록에 실패했습니다.');
+    }
   };
 
   const isAnswerValid = answer.trim() !== '';
@@ -87,18 +99,30 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
         <>
           <div className="mx-5 text-xs text-gray-400 mb-1 font-semibold">관리자 답변</div>
           <div className="mx-5 mb-2 bg-white border border-gray-400 rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
-            {inquiry.answer}
-            {inquiry.answered_at && (
-              <div className="mt-3 text-xs text-gray-400">
-                답변일: {(() => {
-                  const match = (inquiry.answered_at || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-                  if (match) {
-                    return `${match[1]}.${match[2]}.${match[3]} ${match[4]}:${match[5]}`;
-                  }
-                  return inquiry.answered_at;
-                })()}
-              </div>
-            )}
+            {typeof inquiry.answer === 'string'
+              ? inquiry.answer
+              : (inquiry.answer && typeof inquiry.answer === 'object' && 'answer_content' in inquiry.answer
+                  ? (inquiry.answer as { answer_content: string }).answer_content
+                  : '')}
+            {/* 답변일 */}
+            {(() => {
+              const answerObj = inquiry.answer;
+              const answerCreated = (answerObj && typeof answerObj === 'object' && 'created_at' in answerObj)
+                ? (answerObj as { created_at: string }).created_at
+                : inquiry.answered_at;
+              if (answerCreated) {
+                const match = (answerCreated || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+                if (match) {
+                  return (
+                    <div className="mt-3 text-xs text-gray-400">
+                      답변일: {`${match[1]}.${match[2]}.${match[3]} ${match[4]}:${match[5]}`}
+                    </div>
+                  );
+                }
+                return <div className="mt-3 text-xs text-gray-400">답변일: {answerCreated}</div>;
+              }
+              return null;
+            })()}
           </div>
         </>
       )}
