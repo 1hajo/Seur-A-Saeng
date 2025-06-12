@@ -23,7 +23,7 @@ export type ServerMessage =
       timestamp: string;
     };
 
-export default function useWebSocket(routeId: number | null) {
+export default function useWebSocket(routeId: number | null, options?: { onStop?: () => void }) {
   const [gpsData, setGpsData] = useState<GpsData | null>(null);
   const [isOperating, setIsOperating] = useState<boolean>(false);
   const clientRef = useRef<Client | null>(null);
@@ -90,6 +90,11 @@ export default function useWebSocket(routeId: number | null) {
         console.log("운행 종료:", data.timestamp);
         setGpsData(null);
         setIsOperating(false);
+
+          if (options?.onStop) {
+            options.onStop(); 
+          }
+
       } else if (data.type === "RUNNING") {
         setGpsData({
           latitude: data.latitude,
