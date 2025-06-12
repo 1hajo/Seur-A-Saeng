@@ -98,8 +98,12 @@ export default function KakaoMap({ route, activeTab }: KakaoMapProps) {
     return data;
   };
 
-  // 지도에 마커와 폴리라인 그리기
-const drawRouteOnMap = (
+  /** 지도에 마커와 노선 그리는 함수
+   *  - start : 출발지 GPS 좌표 
+   *  - end : 도착지 GPS 좌표 
+   *  - vertexes : 노선(출발지 -> 도착지) GPS 좌표 배열
+    */
+  const drawRouteOnMap = (
   start: { lat: number; lng: number },
   end: { lat: number; lng: number },
   vertexes: number[]
@@ -121,7 +125,7 @@ const drawRouteOnMap = (
     path.push(new window.kakao.maps.LatLng(lat, lng));
   }
 
-  // Polyline 생성
+  // 노선 생성
   const newPolyline = new window.kakao.maps.Polyline({
     path: path,
     strokeWeight: 5,
@@ -132,6 +136,7 @@ const drawRouteOnMap = (
   newPolyline.setMap(map);
   setPolyline(newPolyline);
 
+// 출발지 마커 생성
 const startMarker = new window.kakao.maps.Marker({
   position: new window.kakao.maps.LatLng(start.lat, start.lng),
   map: map,
@@ -142,6 +147,7 @@ const startMarker = new window.kakao.maps.Marker({
   )
 });
 
+// 도착지 마커 생성
 const endMarker = new window.kakao.maps.Marker({
   position: new window.kakao.maps.LatLng(end.lat, end.lng),
   map: map,
@@ -167,6 +173,8 @@ const endMarker = new window.kakao.maps.Marker({
   // 지도 범위 설정 + 패딩 줘서 깔끔하게
   map.setBounds(bounds, 50);
 };
+
+// ---------------------------- drawRouteOnMap 함수 끝끝끝끝끝끝끝끝끝끝끝끝
 
   // route나 activeTab이 변경될 때 경로 다시 그림
   useEffect(() => {
@@ -235,15 +243,15 @@ const endMarker = new window.kakao.maps.Marker({
   }, [gpsData, map, busMarkerImage]);
 
     // 탑승 인원 조회 API  호출 함수
-const fetchPassengerCount = async (shuttleId: string) => {
-  try {
-    const response = await apiClient.get(API.routes.count(shuttleId));
-    console.log('탑승인원 응답:', response.data);
-    setCurrentCount(response.data.count);
-  } catch (error) {
-    console.error('탑승 인원 API 오류:', error);
-  }
-};
+  const fetchPassengerCount = async (shuttleId: string) => {
+    try {
+      const response = await apiClient.get(API.routes.count(shuttleId));
+      console.log('탑승인원 응답:', response.data);
+      setCurrentCount(response.data.count);
+    } catch (error) {
+      console.error('탑승 인원 API 오류:', error);
+    }
+  };
 
   // 운행 중일 때 2초마다 탑승 인원 체크
   useEffect(() => {
