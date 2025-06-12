@@ -3,7 +3,6 @@ import type { RouteType, RoutesResponse } from '../types/RouteType';
 import KakaoMap from '../components/KakaoMap';
 import { loadKakaoMapSDK } from '../libs/loadKakaoMap';
 import BottomBar from '../components/BottomBar';
-import Chatbot from '../components/Chatbot';
 import SlideTab from '../components/SlideTab';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios'; // 네 API 클라이언트 import
@@ -62,7 +61,6 @@ export default function EmployeeGPSApp() {
 
   const locationTabRef = useRef<HTMLDivElement>(null);
   const selectedBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [showChatbot, setShowChatbot] = useState(false);
 
   const [locationIdx, setLocationIdx] = useState(0);
   const [userPrefs, setUserPrefs] = useState<UserPreferences | null>(null);
@@ -141,10 +139,6 @@ export default function EmployeeGPSApp() {
     }
   };
 
-  const handleChatbotToggle = () => {
-    setShowChatbot((v) => !v);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -175,14 +169,6 @@ export default function EmployeeGPSApp() {
           )}
         </div>
       </div>
-      <button
-        onClick={handleChatbotToggle}
-        className="fixed bottom-20 right-4 z-30"
-        aria-label={showChatbot ? '챗봇 닫기' : '챗봇 열기'}
-      >
-        <img src="/chat-bubble.png" alt="챗봇" className="w-16 h-16" />
-      </button>
-      {showChatbot && <Chatbot onClose={() => setShowChatbot(false)} />}
       <BottomBar />
     </div>
   );
