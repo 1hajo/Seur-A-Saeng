@@ -25,7 +25,7 @@ jobs:
         DB_URL=jdbc:postgresql://postgres:5432/postgres
         DB_USERNAME=postgres
         DB_PASSWORD=postgres
-        DB_SCHEMA=seurasaeng_prod
+        DB_SCHEMA=seurasaeng_test
         
         # AWS S3
         AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
