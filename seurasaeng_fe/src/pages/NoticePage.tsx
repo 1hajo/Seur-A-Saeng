@@ -10,6 +10,7 @@ export default function NoticePage({ isAdmin = false }) {
     title: string;
     content: string | null;
     created_at: string;
+    popup: boolean;
   };
   const [notices, setNotices] = useState<NoticeType[]>([]);
   const [draggedId, setDraggedId] = useState<number|null>(null);
@@ -18,6 +19,8 @@ export default function NoticePage({ isAdmin = false }) {
   const [startY, setStartY] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [popupSettingId, setPopupSettingId] = useState<number|null>(null);
+  const [popupNoticeId, setPopupNoticeId] = useState<number|null>(null);
 
   // 버튼 관련 상수 (중복 제거)
   const BUTTON_WIDTH = 80; // px, w-20
@@ -30,7 +33,18 @@ export default function NoticePage({ isAdmin = false }) {
       .then(res => {
         setNotices(res.data);
       })
+      .catch(() => {
+        setNotices([]);
+      })
       .finally(() => setLoading(false));
+
+    apiClient.get('/notices/popup')
+      .then(res => {
+        setPopupNoticeId(res.data?.id ?? null);
+      })
+      .catch(() => {
+        setPopupNoticeId(null);
+      });
   }, []);
 
   // 슬라이드 시작
@@ -75,6 +89,18 @@ export default function NoticePage({ isAdmin = false }) {
       setNotices(prev => prev.filter(notice => notice.id !== id));
     } catch {
       alert('공지 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleSetPopup = async (id: number) => {
+    setPopupSettingId(id); // 1. 버튼 즉시 비활성화
+    setDragXMap(prev => ({ ...prev, [id]: 0 })); // 2. 슬라이드 원위치
+    try {
+      await apiClient.post(`/notices/${id}/popup`); // 3. API 호출
+      setTimeout(() => setPopupSettingId(null), 1500);
+      setPopupNoticeId(id); // 새로 팝업 설정된 id로 갱신
+    } catch {
+      setPopupSettingId(null); // 실패 시 버튼 다시 활성화
     }
   };
 
@@ -126,8 +152,13 @@ export default function NoticePage({ isAdmin = false }) {
                   }}
                 >
                   <button
-                    className="w-20 h-full bg-blue-500 text-white font-bold text-base duration-300"
-                    onClick={() => alert('팝업 설정 기능은 아직 구현되지 않았습니다.')}
+                    className={`w-20 h-full font-bold text-base duration-100 
+                      ${popupSettingId === notice.id || popupNoticeId === notice.id
+                        ? 'bg-gray-300 text-white cursor-not-allowed opacity-60' 
+                        : 'bg-blue-500 text-white'}
+                    `}
+                    onClick={() => handleSetPopup(notice.id)}
+                    disabled={popupSettingId === notice.id || popupNoticeId === notice.id}
                   >
                     팝업 설정
                   </button>
