@@ -9,7 +9,7 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
-# Production
+# Production a
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl tzdata && \
