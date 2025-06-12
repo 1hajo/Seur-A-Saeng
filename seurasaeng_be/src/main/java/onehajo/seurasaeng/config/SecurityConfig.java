@@ -43,8 +43,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html", "/swagger-ui/**", "/api/users/me/qr/valid",
                                 "/api/shuttle/count/*", "/api/notices","/api/notices/**",
                                 "/api/route/**", "/api/timetable/**", "api/timetable/**",
-                                "/api/shuttles/locations",
-                                "/api/inquiries/**").permitAll()
+                                "/api/shuttles/locations", "/api/inquiries/**",
+                                "/actuator/**", "/").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class);
