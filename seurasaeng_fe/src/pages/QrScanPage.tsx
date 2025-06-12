@@ -44,8 +44,9 @@ const QrScanPage = () => {
     if (!cameraPermission) return;
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
+    let html5QrCode: Html5Qrcode | null = null;
     const startScanner = async () => {
-      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode = new Html5Qrcode("reader");
       isScanningRef.current = true;
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length) {
@@ -87,6 +88,12 @@ const QrScanPage = () => {
     startScanner();
     return () => {
       hasStartedRef.current = false;
+      if (html5QrCode) {
+        (async () => {
+          try { await html5QrCode.stop(); } catch {/* ignore stop error */}
+          try { await html5QrCode.clear(); } catch {/* ignore clear error */}
+        })();
+      }
     };
   }, [cameraPermission]);
 
