@@ -150,6 +150,9 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
         const res = await apiClient.get('/timetables');
         const mapped = mapApiToTimetable(res.data);
         setTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+        if (isAdmin) {
+          setOriginalTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+        }
         // 거점명 추출
         const go = mapped.출근.map(item => item.거점);
         const back = mapped.퇴근.map(item => item.거점);
@@ -186,6 +189,9 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
           const res = await apiClient.get('/timetables');
           const mapped = mapApiToTimetable(res.data);
           setTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+          if (isAdmin) {
+            setOriginalTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+          }
           const go = mapped.출근.map(item => item.거점);
           const back = mapped.퇴근.map(item => item.거점);
           setLocations(Array.from(new Set([...go, ...back])));
@@ -196,6 +202,9 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
     };
     fetchPreferencesAndTimetables();
   }, []);
+
+  // timetableData와 originalTimetableData가 다를 때만 초기화 버튼 활성화
+  const isResetEnabled = isEditMode && originalTimetableData && timetableData && JSON.stringify(timetableData) !== JSON.stringify(originalTimetableData);
 
   return (
     <div className="bg-white pb-16" style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}>
@@ -435,12 +444,14 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
               "flex-1 h-11 rounded-lg border font-semibold text-base " +
               (isCurrentLocationEditing
                 ? "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed"
-                : "border-gray-300 bg-white text-gray-600")
+                : (!isResetEnabled
+                    ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "border-gray-300 bg-white text-gray-600"))
             }
-            disabled={isCurrentLocationEditing}
+            disabled={isCurrentLocationEditing || !isResetEnabled}
             onClick={() => {
               if (isCurrentLocationEditing) return;
-              if (originalTimetableData) setTimetableData(originalTimetableData);
+              if (isResetEnabled && originalTimetableData) setTimetableData(originalTimetableData);
               // 수정모드는 유지
             }}
           >초기화</button>
@@ -449,11 +460,31 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
               "flex-1 h-11 rounded-lg font-semibold text-base " +
               (isCurrentLocationEditing
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-[#5382E0] text-white")
+                : (!isResetEnabled
+                    ? "bg-gray-300 text-gray-400 cursor-not-allowed"
+                    : "bg-[#5382E0] text-white"))
             }
-            disabled={isCurrentLocationEditing}
-            onClick={() => {
+            disabled={isCurrentLocationEditing || !isResetEnabled}
+            onClick={async () => {
               if (isCurrentLocationEditing) return;
+              if (!timetableData) return;
+              // 1. 출근/퇴근 모두 합쳐서 API에 맞게 변환
+              const all = [...timetableData.출근, ...timetableData.퇴근];
+              const payload = all.map(item => ({
+                shuttleId: (item as { id?: number }).id,
+                timetables: item.출발시간.map(obj => {
+                  const turn = Object.keys(obj)[0];
+                  return { turn, departureTime: obj[turn] };
+                })
+              }));
+              try {
+                await apiClient.put('/timetable', payload);
+                alert('시간표가 성공적으로 저장되었습니다.');
+                // 저장 후 데이터 새로고침
+                window.location.reload();
+              } catch {
+                alert('시간표 저장에 실패했습니다.');
+              }
               setIsEditMode(false);
               setOriginalTimetableData(null);
             }}
