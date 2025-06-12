@@ -120,7 +120,7 @@ log_info "백엔드 서버 연결을 테스트합니다..."
 BACKEND_IP="10.0.2.166"
 BACKEND_PORT="8080"
 
-if curl -f -s --connect-timeout 10 http://${BACKEND_IP}:${BACKEND_PORT}/actuator/health >/dev/null 2>&1; then
+if curl -f -s --connect-timeout 10 http://10.0.2.166:8080/actuator/health >/dev/null 2>&1; then
     log_success "✅ 백엔드 서버 연결 정상"
     
     # API 프록시 테스트
@@ -131,7 +131,7 @@ if curl -f -s --connect-timeout 10 http://${BACKEND_IP}:${BACKEND_PORT}/actuator
     fi
 else
     log_warning "⚠️ 백엔드 서버에 연결할 수 없습니다."
-    log_info "백엔드 서버가 실행 중인지 확인해주세요: http://${BACKEND_IP}:${BACKEND_PORT}/actuator/health"
+    log_info "백엔드 서버가 실행 중인지 확인해주세요: http://10.0.2.166:8080/actuator/health"
 fi
 
 # 배포 완료
@@ -141,7 +141,7 @@ log_info "=== 🌐 서비스 접근 정보 ==="
 log_info "🌐 웹사이트: http://13.125.200.221"
 log_info "🔒 HTTPS 웹사이트: https://seurasaeng.site"
 log_info "🔍 헬스체크: http://13.125.200.221/health"
-if curl -f -s http://${BACKEND_IP}:${BACKEND_PORT}/actuator/health >/dev/null 2>&1; then
+if curl -f -s http://10.0.2.166:8080/actuator/health >/dev/null 2>&1; then
     log_info "🔗 API 프록시: http://13.125.200.221/api/actuator/health"
 fi
 echo
@@ -154,7 +154,7 @@ log_info "📋 로그 확인: cd seurasaeng_fe && docker-compose logs -f"
     echo "$(date): Frontend deployment completed"
     echo "  - Frontend Health: HEALTHY"
     echo "  - Environment: LOADED"
-    if curl -f -s http://${BACKEND_IP}:${BACKEND_PORT}/actuator/health >/dev/null 2>&1; then
+    if curl -f -s http://10.0.2.166:8080/actuator/health >/dev/null 2>&1; then
         echo "  - Backend Connectivity: VERIFIED"
     else
         echo "  - Backend Connectivity: NOT_AVAILABLE"
