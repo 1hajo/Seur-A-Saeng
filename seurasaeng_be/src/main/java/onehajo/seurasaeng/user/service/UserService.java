@@ -187,8 +187,9 @@ public class UserService {
         }
 
         User user = findUsers.get();
-        user.setPassword(password); // 비밀번호 설정
+        user.setPassword(passwordEncoder.encode(password)); // 비밀번호 설정
         userRepository.save(user);
+        userRepository.flush();
     }
 
     public MyPageResDTO getMyUsers(HttpServletRequest request) {
