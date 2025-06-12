@@ -39,6 +39,9 @@ services:
       - backend-network
 
   backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: seuraseung-backend:latest
     container_name: seuraseung-backend
     restart: unless-stopped

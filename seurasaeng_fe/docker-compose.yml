@@ -1,11 +1,40 @@
 version: '3.8'
 
+networks:
+  frontend-network:
+    driver: bridge
+
+volumes:
+  nginx_logs:
+    driver: local
+
 services:
   frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL}
+        VITE_MOBILITY_API_KEY: ${VITE_MOBILITY_API_KEY}
+        VITE_KAKAOMAP_API_KEY: ${VITE_KAKAOMAP_API_KEY}
+        VITE_PERPLEXITY_API_KEY: ${VITE_PERPLEXITY_API_KEY}
+        VITE_MOBILITY_API_BASE_URL: ${VITE_MOBILITY_API_BASE_URL}
+        VITE_KAKAOMAP_API_BASE_URL: ${VITE_KAKAOMAP_API_BASE_URL}
     image: seuraseung-frontend:latest
     container_name: seuraseung-frontend
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
+    networks:
+      - frontend-network
+    volumes:
+      - nginx_logs:/var/log/nginx
     environment:
       - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=1024
+    labels:
+      - "com.docker.compose.service=frontend"
+      - "com.seuraseung.service=frontend"
+      - "com.seuraseung.version=1.0.0"

@@ -1,42 +1,69 @@
-name: Deploy Frontend
+name: Deploy Frontend to AWS EC2
 
 on:
   push:
-    branches: [dev]
-    paths: ['seurasaeng_fe/**']
+    branches:
+      - dev
+    paths:
+      - 'seurasaeng_fe/**'
   workflow_dispatch:
 
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
 jobs:
-  deploy:
+  deploy-frontend:
+    name: Deploy Frontend to Public Server
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
     
-    - name: Setup Node.js
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: seurasaeng_fe/package-lock.json
         
-    - name: Install and Build
+    - name: Install dependencies
       run: |
         cd seurasaeng_fe
         npm ci
-        echo "VITE_API_BASE_URL=http://13.125.200.221/api" > .env.production
-        echo "VITE_SOCKET_URL=ws://13.125.200.221/ws" >> .env.production
-        npm run build
         
-    - name: Build Docker Image
+    - name: Build React app
       run: |
         cd seurasaeng_fe
-        docker buildx build --platform linux/arm64 \
-          --build-arg VITE_API_BASE_URL=http://13.125.200.221/api \
-          --build-arg VITE_SOCKET_URL=ws://13.125.200.221/ws \
-          -t seuraseung-frontend:latest . --load
+        # 환경변수 설정
+        echo "VITE_API_BASE_URL=https://seurasaeng.site/api" > .env.production
+        echo "VITE_SOCKET_URL=wss://seurasaeng.site/ws" >> .env.production
+        npm run build
+        
+    - name: Verify build
+      run: |
+        cd seurasaeng_fe
+        ls -la dist/
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+        
+    - name: Build Docker image (ARM64)
+      run: |
+        cd seurasaeng_fe
+        docker buildx build \
+          --platform linux/arm64 \
+          --build-arg VITE_API_BASE_URL=https://seurasaeng.site/api \
+          --build-arg VITE_SOCKET_URL=wss://seurasaeng.site/ws \
+          -t seuraseung-frontend:latest . \
+          --load
+          
+    - name: Save Docker image
+      run: |
         docker save seuraseung-frontend:latest | gzip > seurasaeng_fe-image.tar.gz
         
-    - name: Copy to Server
+    - name: Copy files to Server
       uses: appleboy/scp-action@v0.1.5
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
@@ -44,6 +71,7 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/"
         target: "/home/ubuntu/"
+        timeout: 300s
         
     - name: Deploy Frontend
       uses: appleboy/ssh-action@v1.0.0
@@ -51,33 +79,193 @@ jobs:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        timeout: 300s
         script: |
+          set -e
+          
+          echo "🚀 프론트엔드 배포를 시작합니다..."
+          
           cd /home/ubuntu/seurasaeng_fe
           chmod +x deploy.sh
-          ./deploy.sh
+          bash deploy.sh
           
-    - name: Health Check
+          echo "✅ 프론트엔드 배포 완료"
+
+    - name: Health Check and Backend Diagnosis
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        timeout: 180s
         script: |
-          echo "🔍 서비스 상태 확인..."
+          set -e
           
-          # 프론트엔드 확인
-          if curl -f http://localhost/health >/dev/null 2>&1; then
-            echo "✅ 프론트엔드: 정상"
+          echo "🔍 헬스체크 및 백엔드 진단을 시작합니다..."
+          
+          # HTTP 헬스체크
+          MAX_ATTEMPTS=12
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "⏳ HTTP 헬스체크... (${ATTEMPT}/${MAX_ATTEMPTS})"
+            
+            if curl -f -s http://localhost/health > /dev/null; then
+              echo "✅ HTTP 헬스체크 성공"
+              break
+            fi
+            
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "❌ HTTP 헬스체크 실패"
+              cd /home/ubuntu/seurasaeng_fe && docker-compose ps
+              docker logs seuraseung-frontend --tail=20
+              exit 1
+            fi
+            
+            sleep 10
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+          
+          # HTTPS 헬스체크 (선택사항)
+          echo "🔒 HTTPS 헬스체크..."
+          if curl -f -s -k https://localhost/health > /dev/null; then
+            echo "✅ HTTPS 헬스체크 성공"
           else
-            echo "❌ 프론트엔드: 실패"
+            echo "⚠️ HTTPS 헬스체크 실패 (HTTP는 정상)"
           fi
           
-          # 백엔드 확인
-          if curl -f http://10.0.2.166:8080 >/dev/null 2>&1; then
-            echo "✅ 백엔드: 정상"
-            echo "✅ API 프록시: http://13.125.200.221/api/"
+          # 메인 페이지 테스트
+          echo "🌐 메인 페이지 테스트..."
+          if curl -f -s http://localhost/ > /dev/null; then
+            echo "✅ 메인 페이지 접근 가능"
           else
-            echo "❌ 백엔드: 연결 실패"
+            echo "❌ 메인 페이지 접근 실패"
+            exit 1
           fi
           
-          echo "🎉 배포 완료! 접속: http://13.125.200.221"
+          # 백엔드 연결 종합 진단
+          echo "🔗 백엔드 연결 종합 진단을 시작합니다..."
+          echo "========================================"
+          
+          BACKEND_IP="10.0.2.166"
+          BACKEND_PORT="8080"
+          
+          # 1. 네트워크 연결성 확인
+          echo "📊 1. 네트워크 연결성 검사..."
+          echo "  - 백엔드 서버 ping 테스트:"
+          if ping -c 3 -W 5 $BACKEND_IP >/dev/null 2>&1; then
+            echo "    ✅ ping 성공"
+          else
+            echo "    ❌ ping 실패 - 네트워크 문제 가능성"
+          fi
+          
+          # 2. 포트 접근성 테스트
+          echo "  - 백엔드 포트 접근성 테스트:"
+          if command -v nc >/dev/null 2>&1; then
+            if timeout 10 nc -zv $BACKEND_IP $BACKEND_PORT >/dev/null 2>&1; then
+              echo "    ✅ 포트 $BACKEND_PORT 접근 가능"
+            else
+              echo "    ❌ 포트 $BACKEND_PORT 접근 불가"
+              echo "       → 백엔드 서버 미실행 또는 방화벽 차단"
+            fi
+          else
+            echo "    ⚠️ nc 명령어 없음 - 포트 테스트 건너뜀"
+          fi
+          
+          # 3. HTTP 응답 테스트
+          echo "🌐 2. HTTP 연결 테스트..."
+          BACKEND_RESPONSE=$(curl -v --connect-timeout 10 --max-time 30 http://$BACKEND_IP:$BACKEND_PORT/ 2>&1)
+          BACKEND_STATUS=$?
+          HTTP_CODE=$(echo "$BACKEND_RESPONSE" | grep "< HTTP" | awk '{print $3}' | head -1)
+          
+          if [ $BACKEND_STATUS -eq 0 ]; then
+            echo "  ✅ 백엔드 HTTP 연결 성공"
+            echo "     상태코드: ${HTTP_CODE:-200}"
+            
+            # API 프록시 테스트
+            echo "🔄 3. API 프록시 테스트..."
+            PROXY_RESPONSE=$(curl -v --connect-timeout 10 --max-time 30 http://localhost/api/ 2>&1)
+            PROXY_STATUS=$?
+            
+            if [ $PROXY_STATUS -eq 0 ]; then
+              echo "  ✅ API 프록시 정상 작동"
+            else
+              echo "  ❌ API 프록시 연결 실패"
+              echo "     Nginx 설정을 확인해주세요"
+              echo "     프록시 에러: $(echo "$PROXY_RESPONSE" | tail -2 | head -1)"
+            fi
+          else
+            echo "  ❌ 백엔드 HTTP 연결 실패"
+            echo "     에러 상세: $(echo "$BACKEND_RESPONSE" | grep -E "(curl:|Failed)" | head -1)"
+            
+            # curl 종료 코드별 원인 분석
+            case $BACKEND_STATUS in
+              6)  echo "     → DNS 해결 실패" ;;
+              7)  echo "     → 서버에 연결할 수 없음" ;;
+              28) echo "     → 연결 시간 초과" ;;
+              52) echo "     → 서버에서 응답하지 않음" ;;
+              56) echo "     → 네트워크 데이터 수신 실패" ;;
+              *)  echo "     → curl 종료 코드: $BACKEND_STATUS" ;;
+            esac
+            
+            # 4. 시스템 상태 확인
+            echo "🔍 4. 시스템 상태 확인..."
+            
+            # 백엔드 프로세스 확인
+            echo "  - 백엔드 프로세스 확인:"
+            if ps aux | grep -E "(java|spring)" | grep -v grep >/dev/null; then
+              echo "    ✅ Java/Spring 프로세스 발견"
+              ps aux | grep -E "(java|spring)" | grep -v grep | head -2
+            else
+              echo "    ❌ Java/Spring 프로세스 미발견"
+            fi
+            
+            # 포트 사용 현황
+            echo "  - 포트 $BACKEND_PORT 사용 현황:"
+            if command -v netstat >/dev/null 2>&1; then
+              PORT_INFO=$(netstat -tulpn | grep :$BACKEND_PORT)
+              if [ -n "$PORT_INFO" ]; then
+                echo "    ✅ 포트 사용 중: $PORT_INFO"
+              else
+                echo "    ❌ 포트 $BACKEND_PORT 사용 중인 프로세스 없음"
+              fi
+            else
+              echo "    ⚠️ netstat 명령어 없음"
+            fi
+            
+            # 시스템 리소스
+            echo "  - 시스템 리소스:"
+            echo "    메모리: $(free -h | grep Mem | awk '{print $3"/"$2}')"
+            echo "    디스크: $(df -h / | tail -1 | awk '{print $5" used"}')"
+            echo "    로드: $(uptime | awk -F'load average:' '{print $2}')"
+          fi
+          
+          # 5. 방화벽 상태 확인
+          echo "🔥 5. 방화벽 상태 확인..."
+          if command -v ufw >/dev/null 2>&1; then
+            UFW_STATUS=$(ufw status 2>/dev/null | head -3)
+            echo "  $UFW_STATUS"
+          else
+            echo "  ⚠️ ufw 없음 - 방화벽 상태 확인 불가"
+          fi
+          
+          # 최종 결과 요약
+          echo "========================================"
+          if [ $BACKEND_STATUS -eq 0 ]; then
+            echo "🎉 백엔드 연결 상태: ✅ 정상"
+            if [ $PROXY_STATUS -eq 0 ]; then
+              echo "🔄 API 프록시 상태: ✅ 정상"
+            else
+              echo "🔄 API 프록시 상태: ❌ 문제 있음"
+            fi
+          else
+            echo "🚨 백엔드 연결 상태: ❌ 실패"
+            echo ""
+            echo "🔧 권장 해결 방법:"
+            echo "1. 백엔드 서버 실행 상태 확인"
+            echo "2. 포트 $BACKEND_PORT 방화벽 설정 확인"
+            echo "3. 백엔드 서버 로그 확인"
+            echo "4. 네트워크 연결 상태 확인"
+          fi
+          
+          echo "🎉 헬스체크 및 진단 완료!"
