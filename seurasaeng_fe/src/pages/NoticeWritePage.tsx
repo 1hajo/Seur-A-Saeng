@@ -10,11 +10,16 @@ export default function NoticeWritePage() {
 
   const handleSubmit = async () => {
     try {
-      await apiClient.post('/notices', {
+      const res = await apiClient.post('/notices', {
         title,
         content: noticeContent,
       });
-      navigate('/admin/notice');
+      const noticeId = res.data?.id || res.data?.notice_id;
+      if (noticeId) {
+        navigate(`/notice/${noticeId}`, { replace: true });
+      } else {
+        navigate('/admin/notice');
+      }
     } catch {
       alert('공지 등록에 실패했습니다.');
     }
