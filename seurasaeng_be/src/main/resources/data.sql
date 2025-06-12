@@ -96,3 +96,16 @@ INSERT INTO seurasaeng_test.timetable (timetable_id, shuttle_id, departure_time,
 (44, 10, '17:10', 'G동 옆 도로', '3번출구 앞', 30, 45),
 (45, 10, '18:10', 'G동 옆 도로', '3번출구 앞', 30, 45),
 (46, 10, '19:20', 'G동 옆 도로', '3번출구 앞', 30, 45);
+
+-- 관리자 계정 생성 (셔틀 노선에 맞춰서 생성)
+INSERT INTO seurasaeng_test.manager	(manager_id, manager_email, manager_password) VALUES
+(1, 'jiyeonyou0416@naver.com', 'seurasaeng0428'),
+(2, '4649384@naver.com', 'seurasaeng0428'),
+(3, 'kkk_5792@naver.com', 'seurasaeng0428'),
+(4, 'tn25800@naver.com', 'seurasaeng0428'),
+(5, 'ljj1684@naver.com', 'seurasaeng0428'),
+(6, 'kim003512@naver.com', 'seurasaeng0428'),
+(7, 'nedejo7705@3dboxer.com', 'seurasaeng0428'),
+(8, '91fihaw0v1@bltiwd.com', 'seurasaeng0428'),
+(9, 'msovbk4uqu@daouse.com', 'seurasaeng0428'),
+(10, '4t93ekutl2@xkxkud.com', 'seurasaeng0428');
