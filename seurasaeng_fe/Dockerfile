@@ -1,15 +1,33 @@
-FROM node:18-alpine AS build
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
+
+ARG VITE_SOCKET_URL=wss://seurasaeng.site/ws
+ARG VITE_API_BASE_URL=https://seurasaeng.site/api
+ARG VITE_MOBILITY_API_KEY
+ARG VITE_KAKAOMAP_API_KEY
+ARG VITE_PERPLEXITY_API_KEY
+ARG VITE_MOBILITY_API_BASE_URL=https://apis-navi.kakaomobility.com/v1/directions
+ARG VITE_KAKAOMAP_API_BASE_URL=//dapi.kakao.com/v2/maps/sdk.js
+
+ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_MOBILITY_API_KEY=$VITE_MOBILITY_API_KEY
+ENV VITE_KAKAOMAP_API_KEY=$VITE_KAKAOMAP_API_KEY
+ENV VITE_PERPLEXITY_API_KEY=$VITE_PERPLEXITY_API_KEY
+ENV VITE_MOBILITY_API_BASE_URL=$VITE_MOBILITY_API_BASE_URL
+ENV VITE_KAKAOMAP_API_BASE_URL=$VITE_KAKAOMAP_API_BASE_URL
+
 RUN npm run build
 
 FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
+
+COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80

@@ -11,16 +11,54 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
-    - name: Deploy to Frontend Server
-      uses: appleboy/ssh-action@master
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: seurasaeng_fe/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd seurasaeng_fe
+        npm ci
+    
+    - name: Build React app
+      run: |
+        cd seurasaeng_fe
+        npm run build
+    
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        cd seurasaeng_fe
+        docker buildx build --platform linux/arm64 -t seuraseung-frontend:latest . --load
+    
+    - name: Save Docker image
+      run: |
+        docker save seuraseung-frontend:latest | gzip > seurasaeng_fe-image.tar.gz
+    
+    - name: Copy files to Front Server
+      uses: appleboy/scp-action@v0.1.5
+      with:
+        host: ${{ secrets.FRONT_SERVER_HOST }}
+        username: ubuntu
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/"
+        target: "/home/ubuntu/"
+    
+    - name: Deploy Frontend
+      uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd /home/ubuntu/seurasaeng_fe
-          git pull origin main
+          gunzip -c /home/ubuntu/seurasaeng_fe-image.tar.gz | docker load
           docker-compose down
-          docker-compose up -d --build
+          docker-compose up -d
