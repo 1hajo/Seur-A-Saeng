@@ -9,6 +9,7 @@ import onehajo.seurasaeng.noti.dto.NotiResDTO;
 import onehajo.seurasaeng.noti.service.NotiService;
 import onehajo.seurasaeng.popup.service.PopupService;
 import onehajo.seurasaeng.user.service.UserService;
+import onehajo.seurasaeng.util.JwtUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,12 +25,14 @@ public class NotiController {
     private final NotiService notiService;
     private final PopupService popupService;
     private final NewnotiService newnotiService;
+    private final JwtUtil jwtUtil;
 
-    public NotiController(UserService userService, NotiService notiService, PopupService popupService, NewnotiService newnotiService) {
+    public NotiController(UserService userService, NotiService notiService, PopupService popupService, NewnotiService newnotiService, JwtUtil jwtUtil) {
         this.userService = userService;
         this.notiService = notiService;
         this.popupService = popupService;
         this.newnotiService = newnotiService;
+        this.jwtUtil = jwtUtil;
     }
 
     @Transactional
@@ -50,7 +53,13 @@ public class NotiController {
     @GetMapping("/{id}")
     public ResponseEntity<?> searchNoti(HttpServletRequest request, @PathVariable Long id) throws Exception {
         NotiResDTO notiResDTO = notiService.read(id);
-        userService.readNoti(request, id);
+
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        String role = jwtUtil.getRoleFromToken(token);
+
+        if (role.equals("user")) {
+            userService.readNoti(request, id);
+        }
         return ResponseEntity.ok(notiResDTO);
     }
 
