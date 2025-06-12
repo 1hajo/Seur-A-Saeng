@@ -300,17 +300,21 @@ useEffect(() => {
   }, [currentCount]);
 
   return (
-    <div>
-      <div ref={mapRef} className="w-full h-64 rounded-lg shadow" />
-      <div className="text-center mt-4 font-semibold">
+    <div className="flex flex-col w-full h-full flex-1">
+      <div
+        ref={mapRef}
+        style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, minWidth: 0 }}
+        className="bg-gray-100"
+      />
+      <div className="text-center mt-2 font-semibold">
         {isBusOperating
           ? <span className="text-green-600">셔틀버스 운행 중입니다.</span>
           : <span className="text-red-600">현재 운행 중이 아닙니다.</span>
         }
       </div>
       {isBusOperating && (
-        <div className="w-full text-center text-base font-bold mb-2">
-          현재 탑승인원 : <span className={getCountColor(currentCount)}>{currentCount}</span> / {maxCount}
+        <div className="text-center mt-1 text-sm text-gray-600">
+          탑승 인원: <span className={getCountColor(currentCount)}>{currentCount}</span> / {maxCount}
         </div>
       )}
     </div>
