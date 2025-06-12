@@ -17,7 +17,10 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8"  
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     networks:
