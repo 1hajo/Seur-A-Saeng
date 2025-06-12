@@ -43,8 +43,17 @@ export default function KakaoMap({ route, activeTab }: KakaoMapProps) {
   const [busMarkerImage, setBusMarkerImage] = useState<string>(BUS_MARKER_IMAGE_BLUE);
 
    /* 실시간으로 수신하는 GPS 데이터 */
-  const { gpsData } = useWebSocket(route ? route.id : null);
-
+const { gpsData } = useWebSocket(route?.id ?? null, {
+  onStop: () => {
+    console.log("운행 종료 수신됨");
+    setIsBusOperating(false);
+    setCurrentCount(0);
+    if (busMarkerRef.current) {
+      busMarkerRef.current.setMap(null);
+      busMarkerRef.current = null;
+    }
+  },
+});
   // 지도 초기화 
   useEffect(() => {
     if (mapRef.current && window.kakao?.maps && !map) {
@@ -217,13 +226,6 @@ const endMarker = new window.kakao.maps.Marker({
     updateMap();
   }, [map, route?.id, activeTab]);
 
-  //   // 🚨 [추가] route(노선) 변경 시 기존 버스 마커 삭제
-  // useEffect(() => {
-  //   if (busMarker) {
-  //     busMarker.setMap(null); // 지도에서 삭제
-  //     setBusMarker(null);     // 상태 초기화
-  //   }
-  // }, [route]);
 useEffect(() => {
     if (!map || !gpsData) return;
 
@@ -244,6 +246,18 @@ useEffect(() => {
 
     setIsBusOperating(true);
   }, [gpsData, map, busMarkerImage]);
+
+  useEffect(() => {
+  setIsBusOperating(false);
+  setCurrentCount(0);
+
+  if (busMarkerRef.current) {
+    busMarkerRef.current.setMap(null);
+    busMarkerRef.current = null;
+  }
+
+  console.log("노선 변경으로 상태 초기화됨");
+}, [route?.id]);
 
   const fetchPassengerCount = async (shuttleId: string) => {
     try {
