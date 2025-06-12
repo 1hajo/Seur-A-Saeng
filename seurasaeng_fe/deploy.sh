@@ -120,18 +120,93 @@ log_info "백엔드 서버 연결을 테스트합니다..."
 BACKEND_IP="10.0.2.166"
 BACKEND_PORT="8080"
 
-if curl -f -s --connect-timeout 10 http://10.0.2.166:8080/ >/dev/null 2>&1; then
-    log_success "✅ 백엔드 서버 연결 정상"
-    
-    # API 프록시 테스트
-    if curl -f -s --connect-timeout 10 http://localhost/api/ >/dev/null 2>&1; then
-        log_success "✅ API 프록시 정상 작동"
+# 1. 네트워크 연결성 확인
+log_info "📊 네트워크 연결성 검사..."
+echo "1. 백엔드 서버 ping 테스트:"
+if ping -c 3 $BACKEND_IP >/dev/null 2>&1; then
+    log_success "✅ 백엔드 서버 ping 성공"
+else
+    log_error "❌ 백엔드 서버 ping 실패 - 네트워크 문제 가능성"
+fi
+
+# 2. 포트 접근성 테스트
+echo "2. 백엔드 포트 접근성 테스트:"
+if command -v nc >/dev/null 2>&1; then
+    if nc -zv $BACKEND_IP $BACKEND_PORT 2>&1; then
+        log_success "✅ 백엔드 포트 $BACKEND_PORT 접근 가능"
     else
-        log_warning "⚠️ API 프록시 연결에 문제가 있을 수 있습니다."
+        log_error "❌ 백엔드 포트 $BACKEND_PORT 접근 불가 - 서버 미실행 또는 방화벽 차단"
     fi
 else
-    log_warning "⚠️ 백엔드 서버에 연결할 수 없습니다."
-    log_info "백엔드 서버가 실행 중인지 확인해주세요: http://10.0.2.166:8080/"
+    log_warning "⚠️ nc 명령어가 없어 포트 테스트를 건너뜁니다."
+fi
+
+# 3. HTTP 응답 테스트
+echo "3. 백엔드 HTTP 응답 테스트:"
+BACKEND_RESPONSE=$(curl -v --connect-timeout 10 --max-time 30 http://$BACKEND_IP:$BACKEND_PORT/ 2>&1)
+BACKEND_STATUS=$?
+
+if [ $BACKEND_STATUS -eq 0 ]; then
+    log_success "✅ 백엔드 서버 연결 정상"
+    echo "응답 정보: $BACKEND_RESPONSE"
+    
+    # API 프록시 테스트
+    echo "4. API 프록시 테스트:"
+    PROXY_RESPONSE=$(curl -v --connect-timeout 10 --max-time 30 http://localhost/api/ 2>&1)
+    PROXY_STATUS=$?
+    
+    if [ $PROXY_STATUS -eq 0 ]; then
+        log_success "✅ API 프록시 정상 작동"
+        echo "프록시 응답: $PROXY_RESPONSE"
+    else
+        log_error "❌ API 프록시 연결 실패"
+        echo "프록시 에러: $PROXY_RESPONSE"
+        log_warning "Nginx 설정을 확인해주세요."
+    fi
+else
+    log_error "❌ 백엔드 서버 연결 실패"
+    echo "에러 상세: $BACKEND_RESPONSE"
+    log_warning "가능한 원인:"
+    echo "  - 백엔드 서버가 실행되지 않음"
+    echo "  - 포트 $BACKEND_PORT이 차단됨"
+    echo "  - 백엔드 서버에서 오류 발생"
+    echo "  - 네트워크 설정 문제"
+    
+    # 백엔드 서버 상태 추가 확인
+    echo "5. 백엔드 서버 프로세스 확인:"
+    if ps aux | grep -E "(java|spring|$BACKEND_PORT)" | grep -v grep; then
+        log_info "백엔드 관련 프로세스 발견"
+    else
+        log_warning "백엔드 프로세스 미발견"
+    fi
+    
+    echo "6. 포트 사용 현황:"
+    if command -v netstat >/dev/null 2>&1; then
+        NETSTAT_RESULT=$(netstat -tulpn | grep :$BACKEND_PORT)
+        if [ -n "$NETSTAT_RESULT" ]; then
+            echo "포트 $BACKEND_PORT 사용 현황: $NETSTAT_RESULT"
+        else
+            log_warning "포트 $BACKEND_PORT을 사용 중인 프로세스가 없습니다."
+        fi
+    else
+        log_warning "netstat 명령어가 없어 포트 확인을 건너뜁니다."
+    fi
+    
+    # 시스템 리소스 확인
+    echo "7. 시스템 리소스 확인:"
+    log_info "메모리 사용량:"
+    free -h || echo "메모리 정보 확인 불가"
+    
+    log_info "디스크 사용량:"
+    df -h / || echo "디스크 정보 확인 불가"
+    
+    # 네트워크 인터페이스 확인
+    echo "8. 네트워크 인터페이스 확인:"
+    if command -v ip >/dev/null 2>&1; then
+        ip addr show | grep -E "(inet|inet6)" || echo "네트워크 인터페이스 정보 확인 불가"
+    else
+        ifconfig 2>/dev/null | grep -E "(inet|inet6)" || echo "네트워크 인터페이스 정보 확인 불가"
+    fi
 fi
 
 # 배포 완료
@@ -141,8 +216,10 @@ log_info "=== 🌐 서비스 접근 정보 ==="
 log_info "🌐 웹사이트: http://13.125.200.221"
 log_info "🔒 HTTPS 웹사이트: https://seurasaeng.site"
 log_info "🔍 헬스체크: http://13.125.200.221/health"
-if curl -f -s http://10.0.2.166:8080/ >/dev/null 2>&1; then
+if [ $BACKEND_STATUS -eq 0 ]; then
     log_info "🔗 API 프록시: http://13.125.200.221/api/"
+else
+    log_warning "⚠️ 백엔드 미연결로 API 프록시 사용 불가"
 fi
 echo
 log_info "=== 📊 관리 명령어 ==="
@@ -154,10 +231,11 @@ log_info "📋 로그 확인: cd seurasaeng_fe && docker-compose logs -f"
     echo "$(date): Frontend deployment completed"
     echo "  - Frontend Health: HEALTHY"
     echo "  - Environment: LOADED"
-    if curl -f -s http://10.0.2.166:8080/ >/dev/null 2>&1; then
+    if [ $BACKEND_STATUS -eq 0 ]; then
         echo "  - Backend Connectivity: VERIFIED"
     else
-        echo "  - Backend Connectivity: NOT_AVAILABLE"
+        echo "  - Backend Connectivity: FAILED"
+        echo "  - Backend Error: $BACKEND_RESPONSE"
     fi
     echo "  - Port 80: BOUND"
     echo "  - Port 443: BOUND"
