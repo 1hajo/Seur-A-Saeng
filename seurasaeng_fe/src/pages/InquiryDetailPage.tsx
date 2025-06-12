@@ -1,10 +1,14 @@
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import apiClient from '../libs/axios';
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 
 const InquiryDetailPage = ({ isAdmin = false }) => {
   const { id } = useParams();
+  const location = useLocation();
+  const initialInquiry = location.state as InquiryType | null;
+  const [inquiry, setInquiry] = useState<InquiryType>(initialInquiry);
   const [loading, setLoading] = useState(true);
   const [answer, setAnswer] = useState('');
 
@@ -19,7 +23,6 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
     answered_at?: string;
     answer_status?: boolean;
   } | null;
-  const [inquiry, setInquiry] = useState<InquiryType>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -36,7 +39,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
       <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16 flex flex-col">
         <TopBar title="1:1 문의" />
         <div className="flex-1 flex items-center justify-center text-gray-400">로딩 중...</div>
-        <BottomBar />
+        {!isAdmin && <BottomBar />}
       </div>
     );
   }
@@ -45,7 +48,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
       <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16 flex flex-col">
         <TopBar title="1:1 문의" />
         <div className="flex-1 flex items-center justify-center text-gray-400">존재하지 않는 문의입니다.</div>
-        <BottomBar />
+        {!isAdmin && <BottomBar />}
       </div>
     );
   }
@@ -117,6 +120,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
           </button>
         </div>
       )}
+      {!isAdmin && <BottomBar />}
     </div>
   );
 };
