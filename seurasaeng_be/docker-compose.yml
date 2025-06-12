@@ -17,10 +17,7 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"  
     ports:
       - "5432:5432"
     networks:
@@ -47,18 +44,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_BUCKET=${AWS_BUCKET}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      - JWT_KEY=${JWT_KEY}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - MAIL_USERNAME=${MAIL_USERNAME}
-      - MAIL_PASSWORD=${MAIL_PASSWORD}
     ports:
       - "8080:8080"
     networks:
