@@ -1,35 +1,49 @@
-name: Deploy Frontend
+name: Deploy Frontend to AWS EC2
 
 on:
   push:
-    branches: [dev]
-    paths: ['seurasaeng_fe/**']
+    branches:
+      - dev
+    paths:
+      - 'seurasaeng_fe/**'
   workflow_dispatch:
 
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
 jobs:
-  deploy:
+  deploy-frontend:
+    name: Deploy Frontend to Public Server
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       
-    - uses: actions/setup-node@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: seurasaeng_fe/package-lock.json
         
-    - name: Build
+    - name: Install dependencies
       run: |
         cd seurasaeng_fe
         npm ci
+        
+    - name: Build React app
+      run: |
+        cd seurasaeng_fe
         echo "VITE_API_BASE_URL=https://seurasaeng.site/api" > .env.production
         echo "VITE_SOCKET_URL=wss://seurasaeng.site/ws" >> .env.production
         npm run build
         
-    - uses: docker/setup-buildx-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
         
-    - name: Build Docker image
+    - name: Build Docker image (ARM64)
       run: |
         cd seurasaeng_fe
         docker buildx build \
@@ -38,9 +52,12 @@ jobs:
           --build-arg VITE_SOCKET_URL=wss://seurasaeng.site/ws \
           -t seuraseung-frontend:latest . \
           --load
-        docker save seuraseung-frontend:latest | gzip > ../seurasaeng_fe-image.tar.gz
+          
+    - name: Save Docker image
+      run: |
+        docker save seuraseung-frontend:latest | gzip > seurasaeng_fe-image.tar.gz
         
-    - name: Deploy
+    - name: Copy files to Server
       uses: appleboy/scp-action@v0.1.5
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
@@ -50,7 +67,7 @@ jobs:
         target: "/home/ubuntu/"
         timeout: 300s
         
-    - name: Run deployment
+    - name: Deploy Frontend
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
@@ -58,25 +75,75 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         timeout: 300s
         script: |
+          set -e
+          echo "🚀 프론트엔드 배포를 시작합니다..."
           cd /home/ubuntu/seurasaeng_fe
           chmod +x deploy.sh
           bash deploy.sh
-          
-    - name: Health check
+          echo "✅ 프론트엔드 배포 완료"
+
+    - name: Health Check
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        timeout: 60s
+        timeout: 120s
         script: |
-          # 간단한 헬스체크
-          for i in {1..6}; do
-            if curl -f -s http://13.125.200.221/health > /dev/null; then
-              echo "✅ 배포 성공!"
-              exit 0
+          set -e
+          echo "🔍 헬스체크를 진행합니다..."
+          
+          MAX_ATTEMPTS=12
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "⏳ HTTP 헬스체크... (${ATTEMPT}/${MAX_ATTEMPTS})"
+            
+            if curl -f -s http://localhost/health > /dev/null; then
+              echo "✅ HTTP 헬스체크 성공"
+              break
             fi
+            
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "❌ HTTP 헬스체크 실패"
+              cd /home/ubuntu/seurasaeng_fe && docker-compose ps
+              docker logs seuraseung-frontend --tail=20
+              exit 1
+            fi
+            
             sleep 10
+            ATTEMPT=$((ATTEMPT + 1))
           done
-          echo "❌ 헬스체크 실패"
-          exit 1
+          
+          # HTTPS 헬스체크
+          echo "🔒 HTTPS 헬스체크..."
+          if curl -f -s -k https://localhost/health > /dev/null; then
+            echo "✅ HTTPS 헬스체크 성공"
+          else
+            echo "⚠️ HTTPS 헬스체크 실패 (HTTP는 정상)"
+          fi
+          
+          # 메인 페이지 테스트
+          echo "🌐 메인 페이지 테스트..."
+          if curl -f -s http://localhost/ > /dev/null; then
+            echo "✅ 메인 페이지 접근 가능"
+          else
+            echo "❌ 메인 페이지 접근 실패"
+            exit 1
+          fi
+          
+          # 백엔드 연결 테스트
+          echo "🔗 백엔드 연결 테스트..."
+          if curl -f -s http://10.0.2.166:8080/ > /dev/null; then
+            echo "✅ 백엔드 연결 정상"
+            
+            if curl -f -s http://localhost/api/ > /dev/null; then
+              echo "✅ API 프록시 정상"
+            else
+              echo "⚠️ API 프록시 연결 이슈"
+            fi
+          else
+            echo "⚠️ 백엔드 서버 미실행"
+          fi
+          
+          echo "🎉 헬스체크 완료!"

@@ -19,3 +19,5 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - NGINX_WORKER_PROCESSES=auto
