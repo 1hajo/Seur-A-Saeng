@@ -15,7 +15,7 @@ export default function MyInquiryWritePage() {
         content: inquiryContent,
       });
       // 상세 페이지로 이동하며 응답 객체를 state로 전달
-      navigate(`/inquiry/${res.data.inquiry_id}`, { state: res.data });
+      navigate(`/inquiry/${res.data.inquiry_id}`, { state: res.data, replace: true });
     } catch {
       alert('문의 등록에 실패했습니다.');
     }
