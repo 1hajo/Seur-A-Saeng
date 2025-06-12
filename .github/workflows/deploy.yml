@@ -72,7 +72,7 @@ jobs:
         script: |
           # 간단한 헬스체크
           for i in {1..6}; do
-            if curl -f -s http://localhost/health > /dev/null; then
+            if curl -f -s http://13.125.200.221/health > /dev/null; then
               echo "✅ 배포 성공!"
               exit 0
             fi

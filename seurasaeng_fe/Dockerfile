@@ -50,6 +50,6 @@ EXPOSE 80 443
 
 # 헬스체크
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
+    CMD curl -f http://13.125.200.221/health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
