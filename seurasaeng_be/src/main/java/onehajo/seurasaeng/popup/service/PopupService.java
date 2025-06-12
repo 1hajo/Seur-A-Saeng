@@ -41,7 +41,7 @@ public class PopupService {
 
     public NotiResDTO read() throws Exception {
         Popup popup = popupRepository.findAll().getFirst();
-        Noti noti = notiRepository.findById(popup.getId()).orElseThrow(() -> new RuntimeException("공지가 존재하지 않습니다."));
+        Noti noti = notiRepository.findById(popup.getNoti_id().getId()).orElseThrow(() -> new RuntimeException("공지가 존재하지 않습니다."));
 
         return NotiResDTO.builder()
                 .id(noti.getId())
