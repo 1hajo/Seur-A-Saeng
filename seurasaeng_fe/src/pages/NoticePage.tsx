@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 import apiClient from '../libs/axios';
 
 export default function NoticePage({ isAdmin = false }) {
@@ -193,6 +194,7 @@ export default function NoticePage({ isAdmin = false }) {
         })}
       </div>
       {/* 하단바 */}
+      {!isAdmin && <BottomBar />}
       {isAdmin && (
         <button
           className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full bg-[#5382E0] text-white flex items-center justify-center shadow-lg text-xl font-bold"
