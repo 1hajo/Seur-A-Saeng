@@ -145,11 +145,11 @@ jobs:
           
           # 백엔드 연결 테스트
           echo "🔗 백엔드 연결 테스트..."
-          if curl -f -s http://10.0.2.166:8080/actuator/health > /dev/null; then
+          if curl -f -s http://10.0.2.166:8080/ > /dev/null; then
             echo "✅ 백엔드 연결 정상"
             
             # API 프록시 테스트
-            if curl -f -s http://localhost/api/actuator/health > /dev/null; then
+            if curl -f -s http://localhost/api/ > /dev/null; then
               echo "✅ API 프록시 정상"
             else
               echo "⚠️ API 프록시 연결 이슈"
