@@ -36,10 +36,14 @@ RUN npm run build
 FROM nginx:1.25-alpine
 
 # 필수 패키지 설치
-RUN apk add --no-cache curl openssl
+RUN apk add --no-cache curl tzdata openssl && \
+    cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
+    echo "Asia/Seoul" > /etc/timezone && \
+    apk del tzdata
 
 # SSL 디렉토리 생성
-RUN mkdir -p /etc/ssl/certs/seurasaeng.site /var/log/nginx
+RUN mkdir -p /etc/ssl/certs/seurasaeng.site \
+             /var/log/nginx
 
 # Nginx 설정 복사
 COPY nginx/nginx.conf /etc/nginx/nginx.conf

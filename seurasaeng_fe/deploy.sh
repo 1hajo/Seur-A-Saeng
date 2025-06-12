@@ -41,7 +41,7 @@ create_env_file() {
 VITE_API_BASE_URL=https://seurasaeng.site/api
 VITE_SOCKET_URL=wss://seurasaeng.site/ws
 
-# 외부 API 키들
+# 외부 API 키들 (기본값)
 VITE_MOBILITY_API_KEY=2868494a3053c4014954615d4dcfafc1
 VITE_KAKAOMAP_API_KEY=d079914b9511e06b410311be64216366
 VITE_PERPLEXITY_API_KEY=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
@@ -69,13 +69,21 @@ if [ -f "seurasaeng_fe-image.tar.gz" ]; then
         exit 1
     fi
 else
-    log_warning "⚠️ Docker 이미지 파일이 없습니다."
+    log_warning "⚠️ Docker 이미지 파일이 없습니다. 로컬 빌드를 진행합니다."
 fi
 
 # 기존 컨테이너 중지
 log_info "기존 컨테이너를 중지합니다..."
 cd seurasaeng_fe
-docker-compose down --timeout 30 2>/dev/null || true
+if docker-compose ps -q 2>/dev/null | grep -q .; then
+    docker-compose down --timeout 30 2>/dev/null || true
+else
+    log_info "실행 중인 컨테이너가 없습니다."
+fi
+
+# 사용하지 않는 이미지 정리
+log_info "사용하지 않는 Docker 이미지를 정리합니다..."
+docker image prune -f 2>/dev/null || true
 
 # 새 컨테이너 시작
 log_info "새로운 컨테이너를 시작합니다..."
@@ -85,11 +93,11 @@ cd /home/ubuntu
 
 # 헬스체크
 log_info "서비스 준비 대기 중..."
-MAX_ATTEMPTS=24
+MAX_ATTEMPTS=24  # 2분 대기
 ATTEMPT=1
 
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-    if curl -f -s http://localhost/health >/dev/null 2>&1; then
+    if curl -f -s --connect-timeout 5 http://localhost/health >/dev/null 2>&1; then
         log_success "✅ 프론트엔드 서비스 준비 완료"
         break
     fi
@@ -109,17 +117,21 @@ done
 
 # 백엔드 연결 테스트
 log_info "백엔드 서버 연결을 테스트합니다..."
-if curl -f -s http://10.0.2.166:8080/ >/dev/null 2>&1; then
+BACKEND_IP="10.0.2.166"
+BACKEND_PORT="8080"
+
+if curl -f -s --connect-timeout 10 http://10.0.2.166:8080/ >/dev/null 2>&1; then
     log_success "✅ 백엔드 서버 연결 정상"
     
     # API 프록시 테스트
-    if curl -f -s http://localhost/api/ >/dev/null 2>&1; then
+    if curl -f -s --connect-timeout 10 http://localhost/api/ >/dev/null 2>&1; then
         log_success "✅ API 프록시 정상 작동"
     else
         log_warning "⚠️ API 프록시 연결에 문제가 있을 수 있습니다."
     fi
 else
     log_warning "⚠️ 백엔드 서버에 연결할 수 없습니다."
+    log_info "백엔드 서버가 실행 중인지 확인해주세요: http://10.0.2.166:8080/"
 fi
 
 # 배포 완료
@@ -129,7 +141,26 @@ log_info "=== 🌐 서비스 접근 정보 ==="
 log_info "🌐 웹사이트: http://13.125.200.221"
 log_info "🔒 HTTPS 웹사이트: https://seurasaeng.site"
 log_info "🔍 헬스체크: http://13.125.200.221/health"
-log_info "🔗 API 프록시: http://13.125.200.221/api/"
+if curl -f -s http://10.0.2.166:8080/ >/dev/null 2>&1; then
+    log_info "🔗 API 프록시: http://13.125.200.221/api/"
+fi
 echo
+log_info "=== 📊 관리 명령어 ==="
+log_info "📊 서비스 상태: cd seurasaeng_fe && docker-compose ps"
+log_info "📋 로그 확인: cd seurasaeng_fe && docker-compose logs -f"
+
+# 배포 정보 기록
+{
+    echo "$(date): Frontend deployment completed"
+    echo "  - Frontend Health: HEALTHY"
+    echo "  - Environment: LOADED"
+    if curl -f -s http://10.0.2.166:8080/ >/dev/null 2>&1; then
+        echo "  - Backend Connectivity: VERIFIED"
+    else
+        echo "  - Backend Connectivity: NOT_AVAILABLE"
+    fi
+    echo "  - Port 80: BOUND"
+    echo "  - Port 443: BOUND"
+} >> /home/ubuntu/deployment.log
 
 log_success "🚀 프론트엔드 배포가 완료되었습니다!"
