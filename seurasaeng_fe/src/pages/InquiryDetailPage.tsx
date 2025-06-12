@@ -86,7 +86,11 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
       <div className="px-5 pt-20 pb-2">
         <div className="text-[#5382E0] font-bold text-base mb-1">{inquiry.title}</div>
         <div className="text-xs text-gray-400 mb-4">{formattedDate}</div>
-        <span className="inline-block text-xs bg-[#5382E0] text-white rounded px-2 py-0.5 font-semibold mb-2">{inquiry.answer_status ? '답변완료' : '답변대기'}</span>
+        {inquiry.answer_status ? (
+          <span className="text-xs text-white bg-[#5382E0] rounded px-2 py-0.5 font-semibold mb-2">답변완료</span>
+        ) : (
+          <span className="text-xs text-white bg-[#DEE9FF] rounded px-2 py-0.5 font-semibold mb-2">답변대기</span>
+        )}
       </div>
 
       {/* 문의 내용 */}
