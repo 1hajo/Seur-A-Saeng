@@ -137,9 +137,9 @@ export default function RegisterPage() {
             />
             <button
               type="button"
-              className={`flex-shrink-0 min-w-[72px] px-2 py-3 rounded-lg text-white text-sm font-normal transition text-base appearance-none ${codeVerified ? 'bg-gray-200 cursor-not-allowed' : 'bg-[#5382E0] hover:bg-blue-600'}`}
+              className={`flex-shrink-0 min-w-[72px] px-2 py-3 rounded-lg text-white text-sm font-normal transition text-base appearance-none ${codeVerified ? 'bg-gray-200 cursor-not-allowed' : 'bg-[#5382E0] hover:bg-blue-600'} ${(emailLoading || !email || !email.endsWith('@gmail.com') || (emailChecked && codeSent) || codeVerified) ? 'opacity-60 cursor-not-allowed' : ''}`}
               onClick={handleEmailButton}
-              disabled={emailLoading || !email || (emailChecked && codeSent) || codeVerified}
+              disabled={emailLoading || !email || !email.endsWith('@gmail.com') || (emailChecked && codeSent) || codeVerified}
             >
               {emailLoading ? (
                 <span className="flex items-center justify-center">
@@ -147,13 +147,14 @@ export default function RegisterPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                   </svg>
-                  로딩...
                 </span>
               ) : (
                 emailChecked ? (codeSent ? '재전송' : '전송') : '중복확인'
               )}
             </button>
           </div>
+          {/* 회사 이메일 안내 문구 */}
+          <div className="text-xs text-gray-500 mb-1">회사 이메일(@gmail.com)로 가입해주세요.</div>
           {/* 이메일 관련 에러 메시지 */}
           {(error === '이미 사용 중인 이메일입니다.' || error === '이미 존재하는 회원입니다.') && (
             <div className="text-red-500 text-xs mt-1 mb-1">{error}</div>
