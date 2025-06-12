@@ -468,25 +468,31 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
             onClick={async () => {
               if (isCurrentLocationEditing) return;
               if (!timetableData) return;
-              // 1. 출근/퇴근 모두 합쳐서 API에 맞게 변환
-              const all = [...timetableData.출근, ...timetableData.퇴근];
-              const payload = all.map(item => ({
-                shuttleId: (item as { id?: number }).id,
-                timetables: item.출발시간.map(obj => {
+              // 현재 선택된 tab(출근/퇴근)과 locationIdx(거점)에 해당하는 시간표만 추출
+              const selectedList = timetableData[tab];
+              const selectedItem = selectedList.find(item => item.거점 === locations[locationIdx]);
+              // 타입 가드 함수로 id가 있는지 확인
+              function hasId(item: unknown): item is { id: number } {
+                return typeof (item as { id?: unknown }).id === 'number';
+              }
+              if (!selectedItem || !hasId(selectedItem)) {
+                alert('저장할 시간표를 찾을 수 없습니다.');
+                return;
+              }
+              const payload = {
+                shuttleId: selectedItem.id,
+                timetables: selectedItem.출발시간.map(obj => {
                   const turn = Object.keys(obj)[0];
                   return { turn, departureTime: obj[turn] };
                 })
-              }));
+              };
               try {
                 await apiClient.put('/timetable', payload);
-                alert('시간표가 성공적으로 저장되었습니다.');
-                // 저장 후 데이터 새로고침
-                window.location.reload();
+                // 수정 모드는 유지, 오리지널 시간표를 현재 값으로 갱신
+                setOriginalTimetableData(JSON.parse(JSON.stringify(timetableData)));
               } catch {
                 alert('시간표 저장에 실패했습니다.');
               }
-              setIsEditMode(false);
-              setOriginalTimetableData(null);
             }}
           >수정 완료</button>
         </div>
