@@ -1,129 +1,37 @@
-name: Deploy Backend to AWS EC2
+name: Backend Deploy
 
 on:
   push:
-    branches:
-      - dev
-    paths:
+    branches: [ dev ]
+    paths: 
       - 'seurasaeng_be/**'
-  workflow_dispatch:
 
 jobs:
-  deploy-backend:
-    name: Deploy Spring Boot Backend
+  deploy:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Create .env file for deployment
-      run: |
-        cd seurasaeng_be
-        cat > .env << EOF
-        # Database
-        DB_URL=jdbc:postgresql://postgres:5432/postgres
-        DB_USERNAME=postgres
-        DB_PASSWORD=postgres
-        DB_SCHEMA=seurasaeng_test
-        
-        # AWS S3
-        AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
-        AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
-        AWS_REGION=${{ secrets.AWS_REGION }}
-        AWS_BUCKET=${{ secrets.AWS_BUCKET }}
-        
-        # Security
-        ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
-        JWT_KEY=${{ secrets.JWT_KEY }}
-        
-        # Redis
-        REDIS_HOST=redis
-        REDIS_PORT=6379
-        REDIS_DB=0
-        
-        # Mail
-        MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
-        MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
-        
-        # CORS
-        CORS_ALLOWED_ORIGINS=https://seurasaeng.site,http://13.125.200.221
-        EOF
-      
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Backend Server
+      uses: appleboy/ssh-action@master
       with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: maven
-        
-    - name: Build with Maven
-      run: |
-        cd seurasaeng_be
-        mvn clean package -DskipTests
-        
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-        
-    - name: Build Docker image
-      run: |
-        cd seurasaeng_be
-        docker buildx build \
-          --platform linux/arm64 \
-          -t seuraseung-backend:latest . \
-          --load
-          
-    - name: Save Docker image
-      run: |
-        docker save seuraseung-backend:latest | gzip > seurasaeng_be-image.tar.gz
-        
-    - name: Copy files to Back Server via Front Server
-      uses: appleboy/scp-action@v0.1.5
-      with:
-        host: ${{ secrets.FRONT_SERVER_HOST }}
+        host: ${{ secrets.BACK_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "seurasaeng_be-image.tar.gz,seurasaeng_be/"
-        target: "/home/ubuntu/"
-        timeout: 300s
-        
-    - name: Deploy Backend via Front Server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.FRONT_SERVER_HOST }}
-        username: ubuntu
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        timeout: 600s
+        envs: AWS_ACCESS_KEY,AWS_SECRET_KEY,ENCRYPTION_KEY,JWT_KEY
         script: |
-          set -e
-          
-          echo "🚀 Starting backend deployment..."
-          
-          chmod 600 ~/.ssh/susumon.pem
-          
-          echo "📦 Transferring files to back server..."
-          scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be-image.tar.gz ubuntu@10.0.2.166:/home/ubuntu/
-          scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be/ ubuntu@10.0.2.166:/home/ubuntu/
-          
-          echo "🎯 Executing deployment on back server..."
-          ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'cd /home/ubuntu/seurasaeng_be && chmod +x deploy.sh && bash deploy.sh'
-          
-          echo "✅ Backend deployment completed"
-
-    - name: Simple Health Check
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.FRONT_SERVER_HOST }}
-        username: ubuntu
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        timeout: 120s
-        script: |
-          echo "🔍 Backend health check..."
-          sleep 60
-          
-          if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/health' > /dev/null; then
-            echo "✅ Backend is running!"
-          else
-            echo "⚠️ Backend check failed - checking logs"
-            ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'cd /home/ubuntu/seurasaeng_be && docker-compose logs backend'
+          cd /home/ubuntu
+          if [ -d "seurasaeng_be" ]; then
+            rm -rf seurasaeng_be
           fi
+          git clone https://github.com/${{ github.repository }}.git temp_repo
+          mv temp_repo/seurasaeng_be .
+          rm -rf temp_repo
+          cd seurasaeng_be
+          export AWS_ACCESS_KEY="${{ secrets.AWS_ACCESS_KEY }}"
+          export AWS_SECRET_KEY="${{ secrets.AWS_SECRET_KEY }}"
+          export ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}"
+          export JWT_KEY="${{ secrets.JWT_KEY }}"
+          docker-compose down
+          docker-compose up -d --build
