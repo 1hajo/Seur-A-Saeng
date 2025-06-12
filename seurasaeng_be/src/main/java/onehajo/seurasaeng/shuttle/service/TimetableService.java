@@ -108,10 +108,6 @@ public class TimetableService {
         // 요청 받은 시간표 리스트
         List<UpdateTimetableRequestDto.TimetableDto> newTimetables = request.getTimetables();
 
-        if (timetables.size() != newTimetables.size()) {
-            throw new InvalidTimetableSizeException();
-        }
-
         for (int i = 0; i < timetables.size(); i++) {
             Timetable timetable = timetables.get(i);
             UpdateTimetableRequestDto.TimetableDto dto = newTimetables.get(i);
