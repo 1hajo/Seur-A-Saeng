@@ -121,7 +121,7 @@ jobs:
           echo "🔍 Backend health check..."
           sleep 60
           
-          if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/actuator/health' > /dev/null; then
+          if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/' > /dev/null; then
             echo "✅ Backend is running!"
           else
             echo "⚠️ Backend check failed - checking logs"

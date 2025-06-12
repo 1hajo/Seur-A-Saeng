@@ -77,7 +77,7 @@ echo "======================================"
 echo ""
 echo "🌐 서비스 접속 정보:"
 echo "  - 백엔드 API: http://localhost:8080"
-echo "  - Health Check: http://localhost:8080/actuator/health"
+echo "  - Health Check: http://localhost:8080/health"
 echo ""
 echo "📊 컨테이너 상태:"
 docker-compose ps
