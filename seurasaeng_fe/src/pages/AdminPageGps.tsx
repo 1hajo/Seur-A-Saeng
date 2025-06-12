@@ -141,9 +141,13 @@ function AdminPage() {
     setCurrentGpsInfo(null);
   };
 
-  // QR 스캔 버튼 핸들러
+  // QR 스캔 버튼 핸들러 (선택된 노선 id 전달)
   const handleQrScan = () => {
-    navigate('/qr-scan');
+    if (selectedValue && selectedValue !== '0') {
+      navigate('/qr-scan', { state: { shuttleId: selectedValue } });
+    } else {
+      alert('노선을 먼저 선택하세요.');
+    }
   };
 
   // GPS 수집 결과에 따라 UI 상태 업데이트

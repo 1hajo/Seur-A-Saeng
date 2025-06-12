@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import TopBar from '../components/TopBar';
+import { useLocation } from 'react-router-dom';
+import apiClient from '../libs/axios';
 
 // 임시 사용자 정보 (실제 서비스에서는 QR 데이터에서 받아와야 함)
 const mockUser = {
@@ -8,7 +10,6 @@ const mockUser = {
   from: '아이티센 타워',
   to: '금정역',
 };
-const currentCount = 31; // 예시: 10명
 const maxCount = 45; // 목 데이터
 
 const QrScanPage = () => {
@@ -20,6 +21,9 @@ const QrScanPage = () => {
   const timeoutRef = useRef<number | null>(null);
   const isScanningRef = useRef(true);
   const hasStartedRef = useRef(false);
+  const location = useLocation();
+  const shuttleId = location.state?.shuttleId;
+  const [shuttleCount, setShuttleCount] = useState<number | null>(null);
 
   // 카메라 권한 확인
   useEffect(() => {
@@ -101,6 +105,14 @@ const QrScanPage = () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [scanStatus]);
+
+  // 셔틀 탑승 인원 fetch
+  useEffect(() => {
+    if (!shuttleId) return;
+    apiClient.get(`/shuttle/count/${shuttleId}`)
+      .then(res => setShuttleCount(res.data.count))
+      .catch(() => setShuttleCount(null));
+  }, [shuttleId]);
 
   // 색상 결정 함수
   const getCountColor = (count: number) => {
@@ -224,7 +236,7 @@ const QrScanPage = () => {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#fdfdfe]">
         <div className="text-xl text-center w-full max-w-md mx-auto">
           <span>탑승 인원: </span>
-          <span className={getCountColor(currentCount)}>{currentCount}</span>
+          <span className={getCountColor(shuttleCount ?? 0)}>{shuttleCount === null || shuttleCount === undefined ? '-' : shuttleCount}</span>
           <span> / {maxCount}</span>
         </div>
       </div>
