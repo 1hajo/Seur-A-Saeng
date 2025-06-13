@@ -26,6 +26,8 @@ export default function MainPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [popupNotice, setPopupNotice] = useState<NoticeType | null>(null);
+  // 공지 읽음 여부 API로 관리
+  const [hasUnreadNotice, setHasUnreadNotice] = useState(false);
 
   // 페이지 진입 시 모달 상태 초기화 (팝업 공지가 있을 때만)
   useEffect(() => {
@@ -102,13 +104,6 @@ export default function MainPage() {
     return `translateX(${translateX}vw)`;
   };
 
-  // read_newnoti 값 가져오기
-  let readNewNoti = false;
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
-    readNewNoti = !!user?.read_newnoti;
-  } catch {/* ignore */}
-
   useEffect(() => {
     apiClient.get('/notices/popup')
       .then(res => {
@@ -119,6 +114,15 @@ export default function MainPage() {
         }
       })
       .catch(() => setPopupNotice(null));
+  }, []);
+
+  useEffect(() => {
+    apiClient.get('/users/me/noti')
+      .then(res => {
+        // res.data === false: 안 읽은 공지 있음 → 빨간 점 표시
+        setHasUnreadNotice(res.data === false);
+      })
+      .catch(() => setHasUnreadNotice(false));
   }, []);
 
   return (
@@ -174,7 +178,7 @@ export default function MainPage() {
             <span className="font-bold text-base text-[#5382E0]">공지</span>
             <span className="text-xs mb-2 text-[#5382E0] w-36 text-left">바로 셔틀 공지를 확인하세요.</span>
             <span className="ml-auto mt-auto"><img src="/announcement.png" alt="공지" className="w-7 h-7" /></span>
-            {readNewNoti && (
+            {hasUnreadNotice && (
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
             )}
           </button>
