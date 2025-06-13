@@ -106,6 +106,13 @@ public class UserController {
         return new ResponseEntity<>(myPageResDTO, HttpStatus.OK);
     }
 
+    @GetMapping("/me/noti")
+    public ResponseEntity<?> myNoti(HttpServletRequest request) {
+        Boolean read = userService.getMyNoti(request);
+
+        return new ResponseEntity<>(read, HttpStatus.OK);
+    }
+
     @PatchMapping("/me")
     public ResponseEntity<?> updateUser(HttpServletRequest request, @RequestBody MyInfoReqDTO myInfoReqDTO) {
         MyInfoResDTO myInfoResDTO = userService.getMyInfo(request, myInfoReqDTO);
