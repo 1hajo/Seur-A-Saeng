@@ -3,6 +3,7 @@ package onehajo.seurasaeng.shuttle.service;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import onehajo.seurasaeng.entity.Shuttle;
 import onehajo.seurasaeng.entity.Timetable;
 import onehajo.seurasaeng.shuttle.dto.ShuttleWithTimetableDto;
@@ -13,12 +14,14 @@ import onehajo.seurasaeng.shuttle.exception.InvalidTimetableSizeException;
 import onehajo.seurasaeng.shuttle.exception.ShuttleNotFoundException;
 import onehajo.seurasaeng.shuttle.repository.ShuttleRepository;
 import onehajo.seurasaeng.shuttle.repository.TimetableRepository;
+import org.hibernate.sql.Update;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TimetableService {
@@ -111,13 +114,15 @@ public class TimetableService {
         String dropoffLocation = timetables.getFirst().getDropoffLocation();
 
         timetableRepository.deleteAll(timetables);
+        timetableRepository.flush();
 
         // 요청 받은 시간표 리스트
-        List<UpdateTimetableRequestDto.TimetableDto> newTimetables = request.getTimetables();
+        List<UpdateTimetableRequestDto.TimetableDto> list = request.getTimetables();
 
         List<Timetable> timetableEntities = new ArrayList<>();
-        for (UpdateTimetableRequestDto.TimetableDto dto : newTimetables) {
-            Timetable newTimetable = Timetable.builder()
+
+        for(UpdateTimetableRequestDto.TimetableDto dto : list) {
+            Timetable timetable = Timetable.builder()
                     .shuttle(shuttle)
                     .departureTime(LocalTime.parse(dto.getDepartureTime()))
                     .arrivalMinutes(arrivalMinutes) // dto에 있다면
@@ -125,7 +130,7 @@ public class TimetableService {
                     .boardingLocation(boardingLocation) // dto에 있다면
                     .dropoffLocation(dropoffLocation) // dto에 있다면
                     .build();
-            timetableEntities.add(newTimetable);
+            timetableEntities.add(timetable);
         }
 
         timetableRepository.saveAll(timetableEntities);
