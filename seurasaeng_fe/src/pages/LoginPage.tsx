@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import apiClient from '../libs/axios';
 import TopBar from '../components/TopBar';
 import axios from 'axios';
@@ -10,6 +10,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const msg = localStorage.getItem('toast');
+    if (msg) {
+      setToast(msg);
+      localStorage.removeItem('toast');
+      setTimeout(() => setToast(null), 2000);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +52,11 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col justify-between items-center bg-[#fdfdfe] pt-6 pb-4">
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[#5382E0] text-white px-6 py-3 rounded-2xl shadow-lg z-50 text-base font-semibold animate-fade-in whitespace-nowrap max-w-[90vw]">
+          {toast}
+        </div>
+      )}
       <TopBar title="로그인" />
       <div className="w-full flex flex-col items-center">
         <h2 className="text-2xl font-bold text-center mb-4">로그인</h2>
