@@ -1,0 +1,14 @@
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/Inquiry/InquiryIntegrationTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/Inquiry/InquiryUnitTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/SeurasaengApplicationTests.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/qr/BoardingIntegrationTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/qr/BoardingUnitTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/qr/QRIntegrationTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/qr/QRUnitTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/shuttle/FavoriteShuttleIntegrationTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/shuttle/FavoriteShuttleServiceUnitTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/shuttle/ShuttleIntegrationTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/shuttle/ShuttleServiceUnitTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/shuttle/TimetableIntegrationTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/shuttle/TimetableServiceUnitTest.java
+/Users/kimsuyeol/Seur-A-Saeng/seurasaeng_be/src/test/java/onehajo/seurasaeng/socket/WebSocketIntegrationTest.java
