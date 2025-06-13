@@ -2,11 +2,6 @@ version: '3.8'
 
 services:
   frontend:
-    build:
-      context: .
-      args:
-        VITE_MOBILITY_API_KEY: 2868494a3053c4014954615d4dcfafc1
-        VITE_KAKAOMAP_API_KEY: d079914b9511e06b410311be64216366
-        VITE_PERPLEXITY_API_KEY: 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
+    build: .
     ports:
       - "80:80"
