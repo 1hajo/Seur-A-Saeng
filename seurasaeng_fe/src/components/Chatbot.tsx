@@ -111,8 +111,17 @@ export default function Chatbot({ onClose }: { onClose: () => void }) {
     if (!msg.trim() || isLoading) return;
     setMessages(m => [...m, { role: 'user', content: msg }]);
     setInput(''); setIsLoading(true);
+    // 퍼플렉시티 API 사용 제한 (최대 10회)
+    const countKey = 'perplexityChatCount';
+    const count = Number(localStorage.getItem(countKey) || '0');
+    if (count >= 10) {
+      setMessages(m => [...m, { role: 'assistant', content: '세니에게 직접 질문은 1인당 최대 10회까지만 가능합니다. 자주하는 질문 버튼을 이용해 주세요!' }]);
+      setIsLoading(false);
+      return;
+    }
     try {
       const r = await fetchPerplexityChat(msg);
+      localStorage.setItem(countKey, String(count + 1));
       setMessages(m => [...m, { role: 'assistant', content: r.content, citations: r.citations }]);
     } catch {
       setMessages(m => [...m, { role: 'assistant', content: '죄송합니다. 응답을 받아오는데 실패했습니다.' }]);
@@ -240,7 +249,7 @@ export default function Chatbot({ onClose }: { onClose: () => void }) {
         {messages.map((message, idx) => (
           <div
             key={idx}
-            ref={el => messageRefs.current[idx] = el}
+            ref={el => { messageRefs.current[idx] = el; }}
             className={`flex ${message.role==='user'?'justify-end':''} ${idx===0?'':'mt-5'}`}
           >
             {message.role==='assistant' && <img src="/ceni-face.webp" alt="CENI" className="h-7 mr-2 object-cover" />}
