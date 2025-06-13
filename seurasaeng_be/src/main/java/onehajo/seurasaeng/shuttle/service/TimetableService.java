@@ -105,19 +105,30 @@ public class TimetableService {
         // 기존 시간표 조회 (departureTime 오름차순 정렬)
         List<Timetable> timetables = timetableRepository.findByShuttleOrderByDepartureTimeAsc(shuttle);
 
+        int totalSeats = timetables.getFirst().getTotalSeats();
+        int arrivalMinutes = timetables.getFirst().getArrivalMinutes();
+        String boardingLocation = timetables.getFirst().getBoardingLocation();
+        String dropoffLocation = timetables.getFirst().getDropoffLocation();
+
+        timetableRepository.deleteAll(timetables);
+
         // 요청 받은 시간표 리스트
         List<UpdateTimetableRequestDto.TimetableDto> newTimetables = request.getTimetables();
 
-        for (int i = 0; i < timetables.size(); i++) {
-            Timetable timetable = timetables.get(i);
-            UpdateTimetableRequestDto.TimetableDto dto = newTimetables.get(i);
-
-            // 시간만 업데이트
-            timetable.updateDepartureTime(LocalTime.parse(dto.getDepartureTime()));
+        List<Timetable> timetableEntities = new ArrayList<>();
+        for (UpdateTimetableRequestDto.TimetableDto dto : newTimetables) {
+            Timetable newTimetable = Timetable.builder()
+                    .shuttle(shuttle)
+                    .departureTime(LocalTime.parse(dto.getDepartureTime()))
+                    .arrivalMinutes(arrivalMinutes) // dto에 있다면
+                    .totalSeats(totalSeats) // dto에 있다면
+                    .boardingLocation(boardingLocation) // dto에 있다면
+                    .dropoffLocation(dropoffLocation) // dto에 있다면
+                    .build();
+            timetableEntities.add(newTimetable);
         }
 
-        // 저장
-        timetableRepository.saveAll(timetables);
+        timetableRepository.saveAll(timetableEntities);
     }
 
     private String formatDuration(Integer minutes) {
