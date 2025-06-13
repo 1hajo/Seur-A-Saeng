@@ -58,8 +58,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
   const dateObj = new Date(dateStr);
   let formattedDate = dateStr;
   if (!isNaN(dateObj.getTime())) {
-    const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
-    formattedDate = `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
+    formattedDate = `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
   }
 
   const handleAnswerSubmit = async () => {
@@ -121,10 +120,9 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
               if (answerCreated) {
                 const dateObj = new Date(answerCreated);
                 if (!isNaN(dateObj.getTime())) {
-                  const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
                   return (
                     <div className="mt-3 text-xs text-gray-400">
-                      답변일: {`${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`}
+                      답변일: {`${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`}
                     </div>
                   );
                 }
