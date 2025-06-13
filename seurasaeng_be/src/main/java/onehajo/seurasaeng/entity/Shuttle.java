@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "shuttle", schema = "seurasaeng_test")
+@Table(name = "shuttle", schema = "seurasaeng_prod")
 public class Shuttle {
 
     @Id

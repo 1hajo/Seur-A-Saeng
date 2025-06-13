@@ -13,7 +13,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @AllArgsConstructor
-@Table(name = "manager", schema = "seurasaeng_test")
+@Table(name = "manager", schema = "seurasaeng_prod")
 public class Manager {
 
     @Id

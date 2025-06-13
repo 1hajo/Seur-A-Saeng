@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "qr", schema = "seurasaeng_test")
+@Table(name = "qr", schema = "seurasaeng_prod")
 public class Qr {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
