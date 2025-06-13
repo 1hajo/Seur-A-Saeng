@@ -1,0 +1,86 @@
+name: Backend Deploy
+
+on:
+  push:
+    branches: [ be ]
+    paths:
+      - 'seurasaeng_be/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: |
+          cd seurasaeng_be
+          mvn clean package -DskipTests
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          cd seurasaeng_be
+          docker buildx build --platform linux/arm64 -t seuraseung-backend:latest . --load
+
+      - name: Save Docker image
+        run: |
+          docker save seuraseung-backend:latest | gzip > seurasaeng_be-image.tar.gz
+
+      - name: Copy files to Front Server
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.FRONT_SERVER_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "seurasaeng_be-image.tar.gz,seurasaeng_be/"
+          target: "/home/ubuntu/"
+
+      - name: Deploy to Backend Server via Front Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.FRONT_SERVER_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            chmod 600 ~/.ssh/susumon.pem
+            scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be-image.tar.gz ubuntu@10.0.2.166:/home/ubuntu/
+            scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be/ ubuntu@10.0.2.166:/home/ubuntu/
+            ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 << 'ENDSSH'
+            cd /home/ubuntu/seurasaeng_be
+            gunzip -c /home/ubuntu/seurasaeng_be-image.tar.gz | docker load
+            cat > .env << EOF
+            DB_URL=jdbc:postgresql://postgres:5432/postgres
+            DB_USERNAME=postgres
+            DB_PASSWORD=postgres
+            DB_SCHEMA=seurasaeng_prod
+            AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
+            AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
+            AWS_REGION=ap-northeast-2
+            AWS_BUCKET=profile-qrcode
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            JWT_KEY=${{ secrets.JWT_KEY }}
+            REDIS_HOST=redis
+            REDIS_PORT=6379
+            REDIS_DB=0
+            MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+            MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+            CORS_ALLOWED_ORIGINS=https://seurasaeng.site
+            spring.cloud.aws.credentials.access-key=${{ secrets.AWS_ACCESS_KEY }}
+            spring.cloud.aws.credentails.secret-key=${{ secrets.AWS_SECRET_KEY }}
+            spring.cloud.aws.region.static=ap-northeast-2
+            spring.cloud.aws.s3.bucket=profile-qrcode
+            EOF
+            docker-compose down
+            docker-compose up -d
+            ENDSSH
