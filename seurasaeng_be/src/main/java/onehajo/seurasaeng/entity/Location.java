@@ -9,7 +9,7 @@ import lombok.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "location", schema = "seurasaeng_test")
+@Table(name = "location", schema = "seurasaeng_prod")
 public class Location {
 
     @Id
