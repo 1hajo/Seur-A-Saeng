@@ -174,7 +174,8 @@ public class UserService {
 
     public String validateDuplicateUserEmail(String email) {
         Optional<User> findUser = userRepository.findByEmail(email);
-        if (findUser.isPresent()) {
+        Optional<Manager> findManager = managerRepository.findByEmail(email);
+        if (findUser.isPresent() || findManager.isPresent()) {
             throw new DuplicateUserException("이미 존재하는 회원입니다.");
         }
         return email;
