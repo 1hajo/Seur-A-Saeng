@@ -211,6 +211,14 @@ public class UserService {
                 .build();
     }
 
+    public Boolean getMyNoti(HttpServletRequest request) {
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        Long id = jwtUtil.getIdFromToken(token);
+        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        return user.isRead_newnoti();
+    }
+
     @Transactional
     public MyInfoResDTO getMyInfo(HttpServletRequest request, MyInfoReqDTO info) {
         String token = request.getHeader("Authorization").replace("Bearer ", "");
