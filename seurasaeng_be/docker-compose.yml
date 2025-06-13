@@ -3,6 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15.12
+    container_name: seurasaeng_postgres
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -15,11 +16,13 @@ services:
 
   redis:
     image: redis:6.0
+    container_name: seurasaeng_redis
     ports:
       - "6379:6379"
 
   backend:
     build: .
+    container_name: seurasaeng_backend
     ports:
       - "8080:8080"
     env_file:
