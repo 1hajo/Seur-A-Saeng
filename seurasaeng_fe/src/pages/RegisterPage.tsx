@@ -48,7 +48,12 @@ export default function RegisterPage() {
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || '회원가입 실패');
+        const backendMsg = err.response?.data?.message || err.response?.data?.error;
+        if (backendMsg === '이미 존재하는 회원입니다.' || backendMsg === '이메일이 중복되었습니다.') {
+          setError('이미 사용 중인 이메일입니다.');
+        } else {
+          setError(backendMsg || '회원가입 실패');
+        }
       } else {
         setError('회원가입 실패');
       }
@@ -156,7 +161,7 @@ export default function RegisterPage() {
           {/* 회사 이메일 안내 문구 */}
           <div className="text-xs text-gray-500 mb-1">회사 이메일(@gmail.com)로 가입해주세요.</div>
           {/* 이메일 관련 에러 메시지 */}
-          {(error === '이미 사용 중인 이메일입니다.' || error === '이미 존재하는 회원입니다.') && (
+          {(error === '이미 존재하는 회원입니다.') && (
             <div className="text-red-500 text-xs mt-1 mb-1">{error}</div>
           )}
           {/* 인증 코드 확인: 전송 버튼을 누른 후에만 표시 */}
