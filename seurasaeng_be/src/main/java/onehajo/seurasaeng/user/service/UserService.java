@@ -251,15 +251,18 @@ public class UserService {
 
     public void readNoti(HttpServletRequest request, long id) {
         String token = request.getHeader("Authorization").replace("Bearer ", "");
+        String role = jwtUtil.getRoleFromToken(token);
         Long userid = jwtUtil.getIdFromToken(token);
 
-        User user = userRepository.findById(userid).orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
+        if (role.equals("user")) {
+            User user = userRepository.findById(userid).orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
 
-        Optional<Newnoti> existingNewnoti = newNotiRepository.findFirstByOrderByIdAsc();
-        if (existingNewnoti.isPresent() && existingNewnoti.get().getNoti_id().getId().equals(id)) {
-            user.setRead_newnoti(true);
-            userRepository.save(user);
-            userRepository.flush();
+            Optional<Newnoti> existingNewnoti = newNotiRepository.findFirstByOrderByIdAsc();
+            if (existingNewnoti.isPresent() && existingNewnoti.get().getNoti_id().getId().equals(id)) {
+                user.setRead_newnoti(true);
+                userRepository.save(user);
+                userRepository.flush();
+            }
         }
 
     }

@@ -27,51 +27,61 @@ public class SeurasaengApplication {
             SignUpReqDTO req1 = SignUpReqDTO.builder()
                     .email("youjiyeon416@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req2 = SignUpReqDTO.builder()
                     .email("tm003512@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req3 = SignUpReqDTO.builder()
                     .email("yujinkimvv@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req4 = SignUpReqDTO.builder()
                     .email("itcenljj@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req5 = SignUpReqDTO.builder()
                     .email("tn25800@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req6 = SignUpReqDTO.builder()
-                    .email("jisu9384@gmail.com")
+                    .email("dhfkdlsj1@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req7 = SignUpReqDTO.builder()
                     .email("lbm000314@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req8 = SignUpReqDTO.builder()
                     .email("hdmksm1@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req9 = SignUpReqDTO.builder()
                     .email("oqsis55@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             SignUpReqDTO req10 = SignUpReqDTO.builder()
-                    .email("dhfkdlsj1@gmail.com")
+                    .email("itcenceni@gmail.com")
                     .password("seurasaeng0428")
+                    .role("admin")
                     .build();
 
             userService.registerAdmin(req1);
