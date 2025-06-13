@@ -14,7 +14,7 @@ import org.hibernate.annotations.ColumnDefault;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "users", schema = "seurasaeng_test")
+@Table(name = "users", schema = "seurasaeng_prod")
 public class User {
 
     @Id

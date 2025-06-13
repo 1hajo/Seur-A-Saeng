@@ -42,8 +42,8 @@ public class SecurityConfig {
                                 "/api/users/me", "/ws/**", "/v3/api-docs/**",
                                 "/swagger-ui.html", "/swagger-ui/**", "/api/users/me/qr/valid",
                                 "/api/shuttle/count/*", "/api/notices","/api/notices/**",
-                                "/api/route/**", "/api/timetable/**", "api/timetable/**",
-                                "/api/shuttles/locations", "/api/inquiries/**",
+                                "/api/route/**", "/api/timetables/**", "api/timetable/**",
+                                "/api/shuttles/**", "/api/inquiries/**",
                                 "/actuator/**", "/").permitAll()
                         .anyRequest().authenticated()
                 )

@@ -81,7 +81,7 @@ public class UserService {
         String token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail(), request.getRole());
         qrService.generateQRCode(user.getId(), user.getEmail());
 
-        redisTokenService.saveToken(user.getId(), token);
+        redisTokenService.saveTokenUser(user.getId(), token);
 
         return LoginResDTO.builder()
                 .token(token)
@@ -114,7 +114,7 @@ public class UserService {
         managerRepository.flush();
 
         String token = jwtUtil.generateTokenAdmin(manager.getId(), manager.getEmail(), request.getRole());
-        redisTokenService.saveToken(manager.getId(), token);
+        redisTokenService.saveTokenAdmin(manager.getId(), token);
 
         return LoginResDTO.builder()
                 .token(token)
@@ -129,7 +129,7 @@ public class UserService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        String token = redisTokenService.getToken(user.getId());
+        String token = redisTokenService.getTokenUser(user.getId());
         if (token == null || token.isBlank()) {
             throw new RuntimeException("토큰이 존재하지 않습니다.");
         }
@@ -154,7 +154,7 @@ public class UserService {
         Manager manager = managerRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("관리자를 찾을 수 없습니다."));
 
-        String token = redisTokenService.getToken(manager.getId());
+        String token = redisTokenService.getTokenAdmin(manager.getId());
         if (token == null || token.isBlank()) {
             throw new RuntimeException("토큰이 존재하지 않습니다.");
         }
@@ -174,7 +174,8 @@ public class UserService {
 
     public String validateDuplicateUserEmail(String email) {
         Optional<User> findUser = userRepository.findByEmail(email);
-        if (findUser.isPresent()) {
+        Optional<Manager> findManager = managerRepository.findByEmail(email);
+        if (findUser.isPresent() || findManager.isPresent()) {
             throw new DuplicateUserException("이미 존재하는 회원입니다.");
         }
         return email;
@@ -187,8 +188,9 @@ public class UserService {
         }
 
         User user = findUsers.get();
-        user.setPassword(password); // 비밀번호 설정
+        user.setPassword(passwordEncoder.encode(password)); // 비밀번호 설정
         userRepository.save(user);
+        userRepository.flush();
     }
 
     public MyPageResDTO getMyUsers(HttpServletRequest request) {
@@ -216,7 +218,7 @@ public class UserService {
 
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         // 사용자 정보 수정
-        if (info.getPassword()!=null) user.setPassword(info.getPassword());
+        if (info.getPassword()!=null) user.setPassword(passwordEncoder.encode(info.getPassword()));
         if (info.getImage()!=null) user.setImage(info.getImage());
         if (info.getFavorites_work_id()!=0) {
             user.setFavorites_work_id(shuttleRepository.getReferenceById(info.getFavorites_work_id()));
@@ -249,15 +251,18 @@ public class UserService {
 
     public void readNoti(HttpServletRequest request, long id) {
         String token = request.getHeader("Authorization").replace("Bearer ", "");
+        String role = jwtUtil.getRoleFromToken(token);
         Long userid = jwtUtil.getIdFromToken(token);
 
-        User user = userRepository.findById(userid).orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
+        if (role.equals("user")) {
+            User user = userRepository.findById(userid).orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
 
-        Optional<Newnoti> existingNewnoti = newNotiRepository.findFirstByOrderByIdAsc();
-        if (existingNewnoti.isPresent() && existingNewnoti.get().getNoti_id().getId().equals(id)) {
-            user.setRead_newnoti(true);
-            userRepository.save(user);
-            userRepository.flush();
+            Optional<Newnoti> existingNewnoti = newNotiRepository.findFirstByOrderByIdAsc();
+            if (existingNewnoti.isPresent() && existingNewnoti.get().getNoti_id().getId().equals(id)) {
+                user.setRead_newnoti(true);
+                userRepository.save(user);
+                userRepository.flush();
+            }
         }
 
     }

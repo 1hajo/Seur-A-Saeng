@@ -14,7 +14,7 @@ import java.time.LocalTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "timetable", schema = "seurasaeng_test")
+@Table(name = "timetable", schema = "seurasaeng_prod")
 public class Timetable {
 
     @Id
