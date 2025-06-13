@@ -7,6 +7,7 @@ import type { GpsPayload } from "../types/GpsPayload";
 import type { DropdownOption } from "../types/DropdownOption";
 import apiClient from "../libs/axios";
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -33,7 +34,7 @@ const ResponseToDropdownOptions = (data: any[]): DropdownOption[] => {
 function AdminPage() {
   const navigate = useNavigate();
   // 인터벌 ID 저장
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef = useRef<number | null>(null);
   // 마지막 수집된 GPS 데이터 저장 
   const latestGpsRef = useRef<GpsPayload | null>(null);
   // 선택된 노선 ID
@@ -49,7 +50,6 @@ function AdminPage() {
   const { location, error, isLoading, fetchLocation } = useGeoLocation();
 
   const [options, setOptions] = useState<DropdownOption[]>([]);
-
   const handleMaxRetryExceeded = () => {
     console.log("재연결 실패로 운행 종료 처리");
 
@@ -66,17 +66,17 @@ function AdminPage() {
     // WebSocket 연결 hook
   const { stompClientRef, connectSocket, disconnectSocket } = useSocket(handleMaxRetryExceeded);
 
-  useEffect(() => {
-  const fetchRouteOptions = async () => {
-    try {
-      const response = await apiClient.get(API.routes.list);
-      const data = response.data;
-      const mappedOptions = ResponseToDropdownOptions(data);
-      setOptions(mappedOptions);
-    } catch (err) {
-      console.error("노선 목록 가져오기 실패:", err);
-    }
-  };
+    useEffect(() => {
+    const fetchRouteOptions = async () => {
+      try {
+        const response = await apiClient.get(API.routes.list);
+        const data = response.data;
+        const mappedOptions = ResponseToDropdownOptions(data);
+        setOptions(mappedOptions);
+      } catch (err) {
+        console.error("노선 목록 가져오기 실패:", err);
+      }
+    };
 
     fetchRouteOptions();
   }, []);
@@ -100,19 +100,12 @@ function AdminPage() {
         setOperationMessage("GPS 정보 가져오는 중...");
         setCurrentGpsInfo(null);
 
-        sessionStorage.setItem("isOperating", "true");
-        sessionStorage.setItem("selectedValue", selectedValue);
-
         fetchLocation();
-  
-        if (intervalRef.current !== null) {
-          clearInterval(intervalRef.current);
-      }
 
         intervalRef.current = setInterval(() => {
           fetchLocation();
           console.log("[자동 GPS 요청] fetchLocation() 실행됨");
-        }, 1000);
+        }, 3000);
       })
       .catch((error) => {
         console.error("WebSocket 연결 실패:", error);
@@ -124,131 +117,84 @@ function AdminPage() {
     }
   };
 
-  useEffect(() => {
-    const storedIsOperating = sessionStorage.getItem("isOperating");
-    const storedSelectedValue = sessionStorage.getItem("selectedValue");
-
-    if (storedIsOperating === "true" && storedSelectedValue) {
-      setSelectedValue(storedSelectedValue);
-      setIsOperating(true);
-      setOperationMessage("GPS 정보 가져오는 중...");
-
-      connectSocket().then(() => {
-        fetchLocation();
-
-        if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-      }
-
-      intervalRef.current = setInterval(() => {
-        fetchLocation();
-        console.log("[자동 GPS 요청 - 복원됨] fetchLocation() 실행됨");
-      }, 1000);
-    }).catch((err) => {
-      console.error("복원 중 WebSocket 연결 실패", err);
-      setIsOperating(false);
-      sessionStorage.removeItem("isOperating");
-      sessionStorage.removeItem("selectedValue");
-    });
-  }
-}, []);
-
   // 운행 종료 버튼 핸들러
-const handleEndOperation = async () => {
-    if (intervalRef.current !== null) {
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-    console.log("GPS 인터벌 제거 완료");
-  }
-
-  try {
-    await apiClient.post(API.routes.endOperation(selectedValue));
-    await apiClient.delete(API.routes.countDelete(selectedValue));
-    console.log("운행 종료 및 인원 초기화 완료");
-  } catch (err) {
-    console.error("운행 종료 API 실패", err);
-  }
-
-  disconnectSocket();
-
-  // 세션 제거
-  sessionStorage.removeItem("isOperating");
-  sessionStorage.removeItem("selectedValue");
-
-  setIsOperating(false);
-  setOperationMessage("운행이 종료되었습니다. 다시 시작하려면 노선 선택 후 운행 시작 버튼을 누르세요.");
-  setCurrentGpsInfo(null);
-};
-
-  // QR 스캔 버튼 핸들러 (선택된 노선 id 전달)
-  const handleQrScan = () => {
-    if (selectedValue && selectedValue !== '0') {
-      navigate('/qr-scan', { state: { shuttleId: selectedValue } });
-    } else {
-      alert('노선을 먼저 선택하세요.');
+  const handleEndOperation = async () => {
+    // GPS 수집 인터벌 정리
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
+
+    // 서버에 운행 종료 API 호출
+    try {
+      await apiClient.post(API.routes.endOperation(selectedValue));
+      console.log("운행 종료 API 호출 완료");
+
+    await apiClient.delete(API.routes.countDelete(selectedValue));
+    console.log("탑승 인원 초기화 API 호출 완료");
+    } catch (err) {
+      console.error("운행 종료/탑승 인원 초기화 API 호출 실패", err);
+    }
+
+    disconnectSocket(); // WebSocket 연결 종료
+    setIsOperating(false);
+    setOperationMessage("운행이 종료되었습니다. 다시 시작하려면 노선 선택 후 운행 시작 버튼을 누르세요.");
+    setCurrentGpsInfo(null);
   };
 
+  // QR 스캔 버튼 핸들러
+  const handleQrScan = () => {
+    navigate('/qr-scan');
+  };
+
+  // GPS 수집 결과에 따라 UI 상태 업데이트
   useEffect(() => {
-  // 1. 운행 중이 아니면 기본 메시지
-  if (!isOperating && !isLoading && !location && !error) {
-    if (operationMessage !== "현재 운행 중이 아닙니다.") {
+
+    // 초기 상태
+    if (!isOperating && !isLoading && !location && !error) {
       setOperationMessage("현재 운행 중이 아닙니다.");
+      setCurrentGpsInfo(null);
+      return;
     }
-    setCurrentGpsInfo(null);
-    return;
-  }
 
-  // 2. GPS 수집 중이면
-  if (isLoading) {
-    if (operationMessage !== "GPS 정보 가져오는 중...") {
+    // GPS 정보 가져오는 중
+    if (isLoading) {
       setOperationMessage("GPS 정보 가져오는 중...");
-    }
-    setCurrentGpsInfo("로딩 중...");
-    return;
-  }
+      setCurrentGpsInfo("로딩 중...");
 
-  // 3. 에러가 발생했으면
-  if (error) {
-    const errMsg = `GPS 오류: ${error}`;
-    if (operationMessage !== errMsg) {
-      setOperationMessage(errMsg);
-    }
-    setCurrentGpsInfo(`오류: ${error}`);
-    setIsOperating(false);
-    return;
-  }
+    // GPS 요청 실패
+    } else if (error) {
+      setOperationMessage(`GPS 오류: ${error}`);
+      setCurrentGpsInfo(`오류: ${error}`);
+      setIsOperating(false);
 
-  // 4. GPS 위치 정상 수집 완료
-  if (location && isOperating) {
-    const gpsPayload: GpsPayload = {
-      routeId: selectedValue,
-      type: "RUNNING",
-      latitude: location.latitude,
-      longitude: location.longitude,
-      timestamp: getKstTimestamp(),
-    };
+    // GPS 위치 정상 수집 완료
+    } else if (location && isOperating) {
 
-    latestGpsRef.current = gpsPayload;
+      const gpsPayload: GpsPayload = {
+        routeId: selectedValue,
+        type: "RUNNING",
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timestamp: getKstTimestamp(),
+      };
 
-    if (stompClientRef.current?.connected) {
-      stompClientRef.current.publish({
-        destination: API.websocket.destination(selectedValue),
-        body: JSON.stringify(gpsPayload),
-      });
-      console.log("소켓 전송됨:", gpsPayload);
-    } else {
-      console.warn("소켓 연결되지 않음");
-    }
+      latestGpsRef.current = gpsPayload;
 
-    // 🔄 메시지가 이미 '운행중'이 아니면 업데이트
-    if (operationMessage !== "운행중") {
+      if (stompClientRef.current?.connected) {
+        stompClientRef.current.publish({
+          destination: API.websocket.destination(selectedValue),
+          body: JSON.stringify(gpsPayload),
+        });
+        console.log("소켓 전송됨:", gpsPayload);
+      } else {
+        console.warn("소켓 연결되지 않음");
+      }
+
       setOperationMessage("운행중");
+      setCurrentGpsInfo(null);
     }
-    setCurrentGpsInfo(null);
-  }
-}, [location, error, isLoading, isOperating, selectedValue]);
-
+  }, [location, error, isLoading, isOperating, selectedValue]);
 
   // 현재 선택된 노선 객체 가져옴
   const selectedOption = options.find(option => option.value === selectedValue);
@@ -308,7 +254,7 @@ const handleEndOperation = async () => {
             <button
               className="flex-1 py-2 rounded-lg font-semibold text-white bg-blue-500 disabled:bg-blue-200"
               onClick={handleQrScan}
-              disabled={!isOperating}
+              disabled={!isOperating || isLoading}
             >QR 스캔</button>
           </div>
         ) : (
@@ -323,6 +269,7 @@ const handleEndOperation = async () => {
           )}
         </div>
       </div>
+      <BottomBar />
     </div>
   );
 }

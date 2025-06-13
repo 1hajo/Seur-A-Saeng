@@ -30,41 +30,30 @@ export default function KakaoMap({ route, activeTab }: KakaoMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   /* 카카오 맵 객체들 - map, polyline, markers, busMarker*/
   const [map, setMap] = useState<any>(null);
-  const polylineRef = useRef<any>(null);
-  const markerRefs = useRef<any[]>([]);
-  const busMarkerRef = useRef<any>(null);
+  const [polyline, setPolyline] = useState<any>(null);
+  const [markers, setMarkers] = useState<any[]>([]);
+  const [busMarker, setBusMarker] = useState<any>(null);
   /* 버스가 현재 운행 중인지를 나타내는 boolean */
   const [isBusOperating, setIsBusOperating] = useState(false); 
-  /* 현재 탑승 인원을 저장 */
+  /* 실시간으로 수신하는 GPS 데이터 */
+  const { gpsData } = useWebSocket(route ? route.id : null);
+
   const [currentCount, setCurrentCount] = useState<number>(0);
-  /* 버스 정원 */
   const [maxCount] = useState<number>(45); 
-  /* 버스 이미지 (탑승 인원에 따라 버스 색상이 다름) */
   const [busMarkerImage, setBusMarkerImage] = useState<string>(BUS_MARKER_IMAGE_BLUE);
 
-   /* 실시간으로 수신하는 GPS 데이터 */
-const { gpsData } = useWebSocket(route?.id ?? null, {
-  onStop: () => {
-    console.log("운행 종료 수신됨");
-    setIsBusOperating(false);
-    setCurrentCount(0);
-    if (busMarkerRef.current) {
-      busMarkerRef.current.setMap(null);
-      busMarkerRef.current = null;
-    }
-  },
-});
   // 지도 초기화 
   useEffect(() => {
-    if (mapRef.current && window.kakao?.maps && !map) {
-      const mapInstance = new window.kakao.maps.Map(mapRef.current, {
-        center: new window.kakao.maps.LatLng(ITCEN_TOWER_POSITION.latitude, ITCEN_TOWER_POSITION.longitude),
-        level: 5,
-      });
-      setMap(mapInstance);
-    }
-    console.log("[지도 초기화 완료]")
-  }, [map]);
+      if (mapRef.current && window.kakao && window.kakao.maps) {
+        const mapOptions = {
+          center: new window.kakao.maps.LatLng(ITCEN_TOWER_POSITION.latitude, ITCEN_TOWER_POSITION.longitude),
+          level: 5,
+        };
+        const mapInstance = new window.kakao.maps.Map(mapRef.current, mapOptions);
+        setMap(mapInstance);
+        console.log('map 생성 완료:', mapInstance);
+      }
+    }, []);
 
   // 출발지와 도착지 좌표 계산
   // 출근이면 출발지 : 노선 장소, 도착지 : 아이티센 타워
@@ -80,11 +69,11 @@ const { gpsData } = useWebSocket(route?.id ?? null, {
       ? { lat: ITCEN_TOWER_POSITION.latitude, lng: ITCEN_TOWER_POSITION.longitude }
       : { lat: route.latitude, lng: route.longitude };
     
-    console.log('[좌표 계산 완료] 출발지:', start, '도착지:', end);
+    console.log('[좌표 계산] 출발지:', start, '도착지:', end);
     return { start, end };
   };
 
-  // Mobility API로 경로 데이터 가져오는 함수
+  // Mobility API로 경로 데이터 가져오기
   const fetchRouteFromMobilityAPI = async (start: { lat: number; lng: number }, end: { lat: number; lng: number }) => {
     const url = new URL(API.mobility.baseUrl);
     url.searchParams.append('origin', `${start.lng},${start.lat}`);
@@ -102,18 +91,15 @@ const { gpsData } = useWebSocket(route?.id ?? null, {
     });
 
     if (!response.ok) {
-      throw new Error('카카오 모빌리티 API 호출 실패');
+      throw new Error('길찾기 API 호출 실패');
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data;
   };
 
-  /** 지도에 마커와 노선 그리는 함수
-   *  - start : 출발지 GPS 좌표 
-   *  - end : 도착지 GPS 좌표 
-   *  - vertexes : 노선(출발지 -> 도착지) GPS 좌표 배열
-    */
-  const drawRouteOnMap = (
+  // 지도에 마커와 폴리라인 그리기
+const drawRouteOnMap = (
   start: { lat: number; lng: number },
   end: { lat: number; lng: number },
   vertexes: number[]
@@ -121,25 +107,21 @@ const { gpsData } = useWebSocket(route?.id ?? null, {
   if (!map) return;
 
   // 기존 마커/폴리라인 삭제
-  polylineRef.current?.setMap(null);
-  polylineRef.current = null;
-  console.log("[노선 변경으로 지도 초기화] 노선 제거 완료");
-
-  markerRefs.current.forEach(marker => marker.setMap(null));
-  markerRefs.current = [];
-  console.log("[노선 변경으로 지도 초기화] 마커 제거 완료");
-
-  busMarkerRef.current?.setMap(null);
-  busMarkerRef.current = null;
-  console.log("[노선 변경으로 지도 초기화] 버스 마커 제거 완료")
+  markers.forEach(marker => marker.setMap(null));
+  setMarkers([]);
+  if (polyline) {
+    polyline.setMap(null);
+  }
 
   // 경로 좌표 배열 만들기
   const path = [];
   for (let i = 0; i < vertexes.length; i += 2) {
-    path.push(new window.kakao.maps.LatLng(vertexes[i + 1], vertexes[i]));
+    const lng = vertexes[i];
+    const lat = vertexes[i + 1];
+    path.push(new window.kakao.maps.LatLng(lat, lng));
   }
 
-  // 노선 생성
+  // Polyline 생성
   const newPolyline = new window.kakao.maps.Polyline({
     path: path,
     strokeWeight: 5,
@@ -148,9 +130,8 @@ const { gpsData } = useWebSocket(route?.id ?? null, {
     strokeStyle: 'solid',
   });
   newPolyline.setMap(map);
-  polylineRef.current = newPolyline;
+  setPolyline(newPolyline);
 
-// 출발지 마커 생성
 const startMarker = new window.kakao.maps.Marker({
   position: new window.kakao.maps.LatLng(start.lat, start.lng),
   map: map,
@@ -161,7 +142,6 @@ const startMarker = new window.kakao.maps.Marker({
   )
 });
 
-// 도착지 마커 생성
 const endMarker = new window.kakao.maps.Marker({
   position: new window.kakao.maps.LatLng(end.lat, end.lng),
   map: map,
@@ -172,7 +152,7 @@ const endMarker = new window.kakao.maps.Marker({
   )
 });
 
-  markerRefs.current = [startMarker, endMarker];
+  setMarkers([startMarker, endMarker]);
 
   // Bounds 설정 (경로 + 출발지/도착지 전부 포함)
   const bounds = new window.kakao.maps.LatLngBounds();
@@ -188,18 +168,7 @@ const endMarker = new window.kakao.maps.Marker({
   map.setBounds(bounds, 50);
 };
 
-// ---------------------------- drawRouteOnMap 함수 끝끝끝끝끝끝끝끝끝끝끝끝
-
-  /**
-   *  route나 activeTab이 변경될 때 경로 다시 그림
-   *  1) map이 새로 생성됐을 때 
-   *  2) route가 바뀌었을 때 
-   *  3) activeTab이 비뀌었을 때 
-   *
-   *  1. 출발/도착 좌표 계산 
-   *  2. 지도에 선 그리기  
-   * 
-   */
+  // route나 activeTab이 변경될 때 경로 다시 그림
   useEffect(() => {
 
     console.log('현재 선택된 route:', route);
@@ -208,7 +177,7 @@ const endMarker = new window.kakao.maps.Marker({
     if (!map || !route) return;
 
     const updateMap = async () => {
-      const points = getStartAndEndPoints(); // 출발/도착 좌표 계산
+      const points = getStartAndEndPoints();
       if (!points) return;
 
       try {
@@ -217,123 +186,128 @@ const endMarker = new window.kakao.maps.Marker({
 
         const vertexes = data.routes[0].sections[0].roads.flatMap((road: any) => road.vertexes);
         
-        drawRouteOnMap(points.start, points.end, vertexes); // 지도에 선 그리기
+        drawRouteOnMap(points.start, points.end, vertexes);
       } catch (error) {
-        console.error('[API 요청 실패] 경로 불러오기 실패:', error);
+        console.error('경로 불러오기 실패:', error);
       }
     };
 
     updateMap();
-  }, [map, route?.id, activeTab]);
+  }, [map, route, activeTab]);
 
-useEffect(() => {
-    if (!map || !gpsData) return;
-
-    const position = new window.kakao.maps.LatLng(gpsData.latitude, gpsData.longitude);
-
-    if (!busMarkerRef.current) {
-      const marker = new window.kakao.maps.Marker({
-        position,
-        map,
-        image: new window.kakao.maps.MarkerImage(busMarkerImage, new window.kakao.maps.Size(40, 40)),
-        title: '버스 위치',
-      });
-      marker.setMap(map);
-      busMarkerRef.current = marker;
-    } else {
-      busMarkerRef.current.setPosition(position);
+    // 🚨 [추가] route(노선) 변경 시 기존 버스 마커 삭제
+  useEffect(() => {
+    if (busMarker) {
+      busMarker.setMap(null); // 지도에서 삭제
+      setBusMarker(null);     // 상태 초기화
     }
+  }, [route]);
 
-    setIsBusOperating(true);
+  useEffect(() => {
+    if (!map) return;
+
+    if (gpsData) {
+      const busPosition = new window.kakao.maps.LatLng(gpsData.latitude, gpsData.longitude);
+
+      if (!busMarker) {
+        const newBusMarker = new window.kakao.maps.Marker({
+          position: busPosition,
+          map: map,
+          image: new window.kakao.maps.MarkerImage(
+            busMarkerImage,
+            new window.kakao.maps.Size(40, 40)
+          ),
+          title: '버스 위치',
+        });
+        setBusMarker(newBusMarker);
+      } else {
+        busMarker.setPosition(busPosition);
+      }
+
+      setIsBusOperating(true); 
+    } else {
+      if (busMarker) {
+        busMarker.setMap(null);
+        setBusMarker(null);
+      }
+      setIsBusOperating(false);
+    }
   }, [gpsData, map, busMarkerImage]);
 
-  useEffect(() => {
-  setIsBusOperating(false);
-  setCurrentCount(0);
-
-  if (busMarkerRef.current) {
-    busMarkerRef.current.setMap(null);
-    busMarkerRef.current = null;
+    // 탑승 인원 조회 API  호출 함수
+const fetchPassengerCount = async (shuttleId: string) => {
+  try {
+    const response = await apiClient.get(API.routes.count(shuttleId));
+    console.log('탑승인원 응답:', response.data);
+    setCurrentCount(response.data.count);
+  } catch (error) {
+    console.error('탑승 인원 API 오류:', error);
   }
+};
 
-  console.log("노선 변경으로 상태 초기화됨");
-}, [route?.id]);
-
-  const fetchPassengerCount = async (shuttleId: string) => {
-    try {
-      const response = await apiClient.get(API.routes.count(shuttleId));
-      setCurrentCount(response.data.count);
-    } catch (error) {
-      console.error('탑승 인원 API 오류:', error);
-    }
-  };
-
+  // 운행 중일 때 2초마다 탑승 인원 체크
   useEffect(() => {
-  if (!route?.id) return;
+    if (!route?.id) return;
 
-  let interval: any = null;
+    let interval: number | null = null;
 
-  // 현재 선택된 노선이 실제 WebSocket에서 운행 중인 노선인지 확인
-  if (isBusOperating && gpsData) {
-    const isSameRoute = gpsData.latitude !== null && gpsData.longitude !== null;
-
-    if (isSameRoute) {
+    if (isBusOperating) {
       fetchPassengerCount(String(route.id));
       interval = setInterval(() => {
         fetchPassengerCount(String(route.id));
       }, 2000);
+    } else {
+      setCurrentCount(0);
     }
-  } else {
-    setCurrentCount(0);
-  }
 
-  return () => {
-    if (interval) clearInterval(interval);
-  };
-}, [isBusOperating, gpsData, route]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isBusOperating, route]);
 
-  const getBusImage = (count: number) => {
-    if (count <= 15) return BUS_MARKER_IMAGE_BLUE;
-    if (count <= 30) return BUS_MARKER_IMAGE_YELLOW;
-    return BUS_MARKER_IMAGE_RED;
-  };
+// 현재 탑승 인원 정보에 따라 버스 색상 변경
+const getBusImage = (count: number) => {
+  if (count <= 15) return BUS_MARKER_IMAGE_BLUE;
+  if (count <= 30) return BUS_MARKER_IMAGE_YELLOW;
+  return BUS_MARKER_IMAGE_RED;
+};
 
-  const getCountColor = (count: number) => {
-    if (count <= 15) return 'text-blue-500';
-    if (count <= 30) return 'text-yellow-500';
-    return 'text-red-500';
-  };
+// 현재 탑승 인원 정보에 따라 텍스트 색상 변경
+const getCountColor = (count: number) => {
+  if (count <= 15) return 'text-blue-500';
+  if (count <= 30) return 'text-yellow-500';
+  return 'text-red-500';
+};
 
-  useEffect(() => {
-    if (!isBusOperating) return;
-
+useEffect(() => {
+  if (isBusOperating) {
     const newImage = getBusImage(currentCount);
     setBusMarkerImage(newImage);
 
-    if (busMarkerRef.current) {
-      busMarkerRef.current.setImage(new window.kakao.maps.MarkerImage(
+    if (busMarker) {
+      busMarker.setImage(new window.kakao.maps.MarkerImage(
         newImage,
         new window.kakao.maps.Size(40, 40)
       ));
     }
-  }, [currentCount]);
+  }
+}, [currentCount]);
 
   return (
-    <div className="flex flex-col w-full h-full flex-1">
-      <div
-        ref={mapRef}
-        style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, minWidth: 0 }}
-        className="bg-gray-100"
-      />
-      <div className="text-center mt-2 font-semibold">
-        {isBusOperating
-          ? <span className="text-green-600">셔틀버스 운행 중입니다.</span>
-          : <span className="text-red-600">현재 운행 중이 아닙니다.</span>
-        }
+    <div>
+      <div ref={mapRef} className="w-full h-64 rounded-lg shadow"></div>
+
+      <div className="text-center mt-4 font-semibold">
+        {isBusOperating ? (
+          <span className="text-green-600">셔틀버스 운행 중입니다.</span>
+        ) : (
+          <span className="text-red-600">현재 운행 중이 아닙니다.</span>
+        )}
       </div>
+
       {isBusOperating && (
-        <div className="text-center mt-1 text-sm text-gray-600">
-          탑승 인원: <span className={getCountColor(currentCount)}>{currentCount}</span> / {maxCount}
+        <div className="w-full text-center text-base font-bold mb-2">
+          현재 탑승인원 : <span className={getCountColor(currentCount)}>{currentCount}</span> / {maxCount}
         </div>
       )}
     </div>

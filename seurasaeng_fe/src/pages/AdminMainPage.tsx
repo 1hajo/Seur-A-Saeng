@@ -1,15 +1,9 @@
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminMainPage() {
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
-    navigate('/');
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-[#fdfdfe] pb-16">
       <TopBar title="관리자 페이지" showBackButton={false} />
@@ -38,15 +32,8 @@ export default function AdminMainPage() {
             <span className="font-bold text-base text-[#5382E0]">시간표 관리</span>
           </button>
         </div>
-        <div className="flex justify-end px-4 pt-20">
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-red-600 transition"
-          >
-            로그아웃
-          </button>
-        </div>
       </div>
+      <BottomBar />
     </div>
   );
 }

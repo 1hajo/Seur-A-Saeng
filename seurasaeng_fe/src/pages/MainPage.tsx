@@ -4,17 +4,10 @@ import Chatbot from '../components/Chatbot';
 import MyPageDrawer from '../components/MyPageDrawer';
 import BottomBar from '../components/BottomBar';
 import PopupModal from '../components/PopupModal';
-import apiClient from '../libs/axios';
+import notices from '../mocks/noticesMock';
 
 // 드로어 관련 상수
 const DRAWER_WIDTH = 80; // 드로어의 너비 (vw 단위)
-
-type NoticeType = {
-  id: number;
-  title: string;
-  content: string;
-  created_at: string;
-};
 
 export default function MainPage() {
   const navigate = useNavigate();
@@ -25,23 +18,9 @@ export default function MainPage() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dragX, setDragX] = useState(0);
-  const [popupNotice, setPopupNotice] = useState<NoticeType | null>(null);
-  // 공지 읽음 여부 API로 관리
-  const [hasUnreadNotice, setHasUnreadNotice] = useState(false);
 
-  // 페이지 진입 시 모달 상태 초기화 (팝업 공지가 있을 때만)
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const shouldShowModal = localStorage.getItem('hidePopupToday') !== today;
-    if (shouldShowModal && popupNotice) {
-      setShowModal(false);
-      requestAnimationFrame(() => {
-        setShowModal(true);
-      });
-    } else {
-      setShowModal(false);
-    }
-  }, [popupNotice]);
+  // 최신 공지 가져오기 (date 기준 내림차순 정렬 후 첫 번째)
+  const latestNotice = [...notices].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
   // 오늘 그만 보기 버튼 핸들러
   const handleDontShowToday = () => {
@@ -52,11 +31,25 @@ export default function MainPage() {
 
   // 공지 바로가기 핸들러
   const handleGoToNotice = () => {
-    if (popupNotice?.id) {
-      navigate(`/notice/${popupNotice.id}`);
+    if (latestNotice?.id) {
+      navigate(`/notice/${latestNotice.id}`);
       setShowModal(false);
     }
   };
+
+  // 페이지 진입 시 모달 상태 초기화
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const shouldShowModal = localStorage.getItem('hidePopupToday') !== today;
+    
+    // 모달 상태를 잠시 false로 설정했다가 true로 변경하여 애니메이션 트리거
+    if (shouldShowModal) {
+      setShowModal(false);
+      requestAnimationFrame(() => {
+        setShowModal(true);
+      });
+    }
+  }, []);
 
   const handleChatbotToggle = () => {
     setShowChatbot(prev => !prev);
@@ -104,40 +97,17 @@ export default function MainPage() {
     return `translateX(${translateX}vw)`;
   };
 
-  useEffect(() => {
-    apiClient.get('/notices/popup')
-      .then(res => {
-        if (res.data && res.data.id) {
-          setPopupNotice(res.data);
-        } else {
-          setPopupNotice(null);
-        }
-      })
-      .catch(() => setPopupNotice(null));
-  }, []);
-
-  useEffect(() => {
-    apiClient.get('/users/me/noti')
-      .then(res => {
-        // res.data === false: 안 읽은 공지 있음 → 빨간 점 표시
-        setHasUnreadNotice(res.data === false);
-      })
-      .catch(() => setHasUnreadNotice(false));
-  }, []);
-
   return (
     <div className="flex flex-col h-[calc(var(--vh,1vh)*100)] bg-[#fdfdfe] px-4 pt-6 pb-2 relative">
       {/* 팝업 모달 */}
-      {popupNotice && (
-        <PopupModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          title={popupNotice.title || '공지사항'}
-          content={popupNotice.content || '공지 내용이 없습니다.'}
-          dontShowTodayHandler={handleDontShowToday}
-          goToNoticeHandler={handleGoToNotice}
-        />
-      )}
+      <PopupModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={latestNotice?.title || '공지사항'}
+        content={latestNotice?.content || '공지 내용이 없습니다.'}
+        dontShowTodayHandler={handleDontShowToday}
+        goToNoticeHandler={handleGoToNotice}
+      />
       {/* 메인 컨텐츠를 감싸는 div에 transition 추가 */}
       <div 
         style={{
@@ -178,9 +148,7 @@ export default function MainPage() {
             <span className="font-bold text-base text-[#5382E0]">공지</span>
             <span className="text-xs mb-2 text-[#5382E0] w-36 text-left">바로 셔틀 공지를 확인하세요.</span>
             <span className="ml-auto mt-auto"><img src="/announcement.png" alt="공지" className="w-7 h-7" /></span>
-            {hasUnreadNotice && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-            )}
+            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
           </button>
           <button className="col-span-1 bg-[#DEE9FF] rounded-xl p-4 flex flex-col items-start shadow-sm min-h-[90px]" onClick={() => navigate('/timetable')}>
             <span className="font-bold text-base text-[#5382E0]">시간표</span>
@@ -196,6 +164,11 @@ export default function MainPage() {
             <span className="font-bold text-base text-[#5382E0]">실시간 셔틀 확인</span>
             <span className="text-xs mb-2 text-[#5382E0] w-36 text-left">실시간으로 셔틀 위치를 확인하세요.</span>
             <span className="ml-auto mt-auto"><img src="/shuttle.png" alt="실시간 셔틀" className="w-7 h-7" /></span>
+          </button>
+          <button className="col-span-1 bg-[#DEE9FF] rounded-xl p-4 flex flex-col items-start shadow-sm min-h-[90px]" onClick={() => navigate('/admin')}>
+            <span className="font-bold text-base text-[#5382E0]">관리자 페이지</span>
+            <span className="text-xs mb-2 text-[#5382E0] w-36 text-left">관리자 기능을 테스트하세요.</span>
+            <span className="ml-auto mt-auto"><img src="/admin.png" alt="관리자" className="w-7 h-7" /></span>
           </button>
         </div>
       </div>
