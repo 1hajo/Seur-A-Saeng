@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import BottomBar from '../components/BottomBar';
 import apiClient from '../libs/axios';
 import SlideTab from '../components/SlideTab';
 import TopBar from '../components/TopBar';
@@ -151,6 +150,9 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
         const res = await apiClient.get('/timetables');
         const mapped = mapApiToTimetable(res.data);
         setTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+        if (isAdmin) {
+          setOriginalTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+        }
         // 거점명 추출
         const go = mapped.출근.map(item => item.거점);
         const back = mapped.퇴근.map(item => item.거점);
@@ -187,6 +189,9 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
           const res = await apiClient.get('/timetables');
           const mapped = mapApiToTimetable(res.data);
           setTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+          if (isAdmin) {
+            setOriginalTimetableData({ 출근: mapped.출근, 퇴근: mapped.퇴근 });
+          }
           const go = mapped.출근.map(item => item.거점);
           const back = mapped.퇴근.map(item => item.거점);
           setLocations(Array.from(new Set([...go, ...back])));
@@ -197,6 +202,9 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
     };
     fetchPreferencesAndTimetables();
   }, []);
+
+  // timetableData와 originalTimetableData가 다를 때만 초기화 버튼 활성화
+  const isResetEnabled = isEditMode && originalTimetableData && timetableData && JSON.stringify(timetableData) !== JSON.stringify(originalTimetableData);
 
   return (
     <div className="bg-white pb-16" style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}>
@@ -224,7 +232,11 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
             <div key={idx} className="w-full max-w-md bg-[#5382E0] rounded-xl text-white flex flex-col items-center mb-6 py-3 px-4 relative">
               {/* 노선 헤더 */}
               <div className="text-lg font-bold mb-1 text-center w-full">
-                {locations[locationIdx]} → 아이티센 타워
+                {tab === '퇴근' ? (
+                  <>아이티센 타워 → {locations[locationIdx]}</>
+                ) : (
+                  <>{locations[locationIdx]} → 아이티센 타워</>
+                )}
               </div>
               {/* 승/하차 장소 안내 (카드 안쪽, 헤더 아래) */}
               <div className="text-xs text-blue-100 mb-8 w-full text-center">
@@ -428,8 +440,6 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
           ))
         )}
       </div>
-      {/* 하단바 */}
-      <BottomBar />
       {/* 하단 고정 완료/취소 바 (수정 모드에서만) */}
       {isEditMode && (
         <div className="bottom-0 left-0 right-0 z-30 bg-white flex h-16 px-4 gap-3 items-center justify-center">
@@ -438,12 +448,14 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
               "flex-1 h-11 rounded-lg border font-semibold text-base " +
               (isCurrentLocationEditing
                 ? "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed"
-                : "border-gray-300 bg-white text-gray-600")
+                : (!isResetEnabled
+                    ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "border-gray-300 bg-white text-gray-600"))
             }
-            disabled={isCurrentLocationEditing}
+            disabled={isCurrentLocationEditing || !isResetEnabled}
             onClick={() => {
               if (isCurrentLocationEditing) return;
-              if (originalTimetableData) setTimetableData(originalTimetableData);
+              if (isResetEnabled && originalTimetableData) setTimetableData(originalTimetableData);
               // 수정모드는 유지
             }}
           >초기화</button>
@@ -452,13 +464,39 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
               "flex-1 h-11 rounded-lg font-semibold text-base " +
               (isCurrentLocationEditing
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-[#5382E0] text-white")
+                : (!isResetEnabled
+                    ? "bg-gray-300 text-gray-400 cursor-not-allowed"
+                    : "bg-[#5382E0] text-white"))
             }
-            disabled={isCurrentLocationEditing}
-            onClick={() => {
+            disabled={isCurrentLocationEditing || !isResetEnabled}
+            onClick={async () => {
               if (isCurrentLocationEditing) return;
-              setIsEditMode(false);
-              setOriginalTimetableData(null);
+              if (!timetableData) return;
+              // 현재 선택된 tab(출근/퇴근)과 locationIdx(거점)에 해당하는 시간표만 추출
+              const selectedList = timetableData[tab];
+              const selectedItem = selectedList.find(item => item.거점 === locations[locationIdx]);
+              // 타입 가드 함수로 id가 있는지 확인
+              function hasId(item: unknown): item is { id: number } {
+                return typeof (item as { id?: unknown }).id === 'number';
+              }
+              if (!selectedItem || !hasId(selectedItem)) {
+                alert('저장할 시간표를 찾을 수 없습니다.');
+                return;
+              }
+              const payload = {
+                shuttleId: selectedItem.id,
+                timetables: selectedItem.출발시간.map(obj => {
+                  const turn = Object.keys(obj)[0];
+                  return { turn, departureTime: obj[turn] };
+                })
+              };
+              try {
+                await apiClient.put('/timetable', payload);
+                // 수정 모드는 유지, 오리지널 시간표를 현재 값으로 갱신
+                setOriginalTimetableData(JSON.parse(JSON.stringify(timetableData)));
+              } catch {
+                alert('시간표 저장에 실패했습니다.');
+              }
             }}
           >수정 완료</button>
         </div>

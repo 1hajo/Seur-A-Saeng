@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
-import { MdAccountCircle } from 'react-icons/md';
 
 const LOCATIONS = [
   { id: 1, name: '정부과천청사역' },
@@ -93,7 +92,7 @@ export default function EditProfilePage() {
               {profileImg ? (
                 <img src={profileImg} alt="프로필" className="w-20 h-20 object-contain rounded-full bg-white" />
               ) : (
-                <MdAccountCircle size={80} color="#5382E0" className="bg-white rounded-full w-20 h-20" />
+                <img src="/ceni-face.webp" alt="기본 프로필" className="w-20 h-20 object-contain rounded-full bg-white" />
               )}
             </div>
             <input

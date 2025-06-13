@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import BottomBar from '../components/BottomBar';
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 import apiClient from '../libs/axios';
 
 export default function NoticePage({ isAdmin = false }) {
@@ -11,6 +11,7 @@ export default function NoticePage({ isAdmin = false }) {
     title: string;
     content: string | null;
     created_at: string;
+    popup: boolean;
   };
   const [notices, setNotices] = useState<NoticeType[]>([]);
   const [draggedId, setDraggedId] = useState<number|null>(null);
@@ -18,6 +19,9 @@ export default function NoticePage({ isAdmin = false }) {
   const startXRef = useRef(0);
   const [startY, setStartY] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [popupSettingId, setPopupSettingId] = useState<number|null>(null);
+  const [popupNoticeId, setPopupNoticeId] = useState<number|null>(null);
 
   // 버튼 관련 상수 (중복 제거)
   const BUTTON_WIDTH = 80; // px, w-20
@@ -25,9 +29,23 @@ export default function NoticePage({ isAdmin = false }) {
   const BUTTONS_TOTAL_WIDTH = BUTTON_WIDTH * BUTTON_COUNT;
 
   useEffect(() => {
-    apiClient.get('/notices').then(res => {
-      setNotices(res.data);
-    });
+    setLoading(true);
+    apiClient.get('/notices')
+      .then(res => {
+        setNotices(res.data);
+      })
+      .catch(() => {
+        setNotices([]);
+      })
+      .finally(() => setLoading(false));
+
+    apiClient.get('/notices/popup')
+      .then(res => {
+        setPopupNoticeId(res.data?.id ?? null);
+      })
+      .catch(() => {
+        setPopupNoticeId(null);
+      });
   }, []);
 
   // 슬라이드 시작
@@ -66,9 +84,25 @@ export default function NoticePage({ isAdmin = false }) {
   };
 
   // 삭제 핸들러 (실제 삭제 로직은 추후 구현)
-  const handleDelete = () => {
-    // TODO: 삭제 로직 구현
-    alert('삭제 기능은 아직 구현되지 않았습니다.');
+  const handleDelete = async (id: number) => {
+    try {
+      await apiClient.delete(`/notices/${id}`);
+      setNotices(prev => prev.filter(notice => notice.id !== id));
+    } catch {
+      alert('공지 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleSetPopup = async (id: number) => {
+    setPopupSettingId(id); // 1. 버튼 즉시 비활성화
+    setDragXMap(prev => ({ ...prev, [id]: 0 })); // 2. 슬라이드 원위치
+    try {
+      await apiClient.post(`/notices/${id}/popup`); // 3. API 호출
+      setTimeout(() => setPopupSettingId(null), 1500);
+      setPopupNoticeId(id); // 새로 팝업 설정된 id로 갱신
+    } catch {
+      setPopupSettingId(null); // 실패 시 버튼 다시 활성화
+    }
   };
 
   return (
@@ -77,7 +111,12 @@ export default function NoticePage({ isAdmin = false }) {
       <TopBar title={isAdmin ? "공지사항 관리" : "공지사항"} />
       {/* 공지 리스트 */}
       <div className="pt-14 flex-1 px-4">
-        {notices.map(notice => {
+        {loading ? (
+          <div className="text-center text-gray-400 py-12">불러오는 중...</div>
+        ) : notices.length === 0 ? (
+          <div className="text-center text-gray-400 py-12">공지사항이 없습니다.</div>
+        ) : null}
+        {[...notices].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(notice => {
           if (isAdmin) {
             const dragX = dragXMap[notice.id] || 0;
             const isDragging = draggedId === notice.id;
@@ -114,14 +153,19 @@ export default function NoticePage({ isAdmin = false }) {
                   }}
                 >
                   <button
-                    className="w-20 h-full bg-blue-500 text-white font-bold text-base duration-300"
-                    onClick={() => alert('팝업 설정 기능은 아직 구현되지 않았습니다.')}
+                    className={`w-20 h-full font-bold text-base duration-100 
+                      ${popupSettingId === notice.id || popupNoticeId === notice.id
+                        ? 'bg-gray-300 text-white cursor-not-allowed opacity-60' 
+                        : 'bg-blue-500 text-white'}
+                    `}
+                    onClick={() => handleSetPopup(notice.id)}
+                    disabled={popupSettingId === notice.id || popupNoticeId === notice.id}
                   >
                     팝업 설정
                   </button>
                   <button
                     className="w-20 h-full bg-red-500 text-white font-bold text-base duration-300"
-                    onClick={handleDelete}
+                    onClick={() => handleDelete(notice.id)}
                   >
                     삭제
                   </button>
@@ -150,6 +194,7 @@ export default function NoticePage({ isAdmin = false }) {
         })}
       </div>
       {/* 하단바 */}
+      {!isAdmin && <BottomBar />}
       {isAdmin && (
         <button
           className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full bg-[#5382E0] text-white flex items-center justify-center shadow-lg text-xl font-bold"
@@ -160,7 +205,6 @@ export default function NoticePage({ isAdmin = false }) {
           <img src="/add.png" alt="공지 추가" className="w-8 h-8 brightness-0 invert" />
         </button>
       )}
-      <BottomBar />
     </div>
   );
 }

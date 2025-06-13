@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
-import BottomBar from '../components/BottomBar';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
 
@@ -33,12 +32,13 @@ export default function MyInquiryPage({ isAdmin = false }) {
   const [isScrolling, setIsScrolling] = useState(false);
 
   useEffect(() => {
-    apiClient.get('/inquiries').then(res => {
+    const url = isAdmin ? '/inquiries/admin' : '/inquiries';
+    apiClient.get(url).then(res => {
       setInquiries(res.data);
     }).finally(() => {
       setLoading(false);
     });
-  }, []);
+  }, [isAdmin]);
 
   // 슬라이드 시작
   const handleTouchStart = (e: React.TouchEvent, id: number) => {
@@ -79,6 +79,16 @@ export default function MyInquiryPage({ isAdmin = false }) {
     setIsScrolling(false);
   };
 
+  // 문의 삭제 핸들러 (일반 사용자만)
+  const handleDelete = async (id: number) => {
+    try {
+      await apiClient.delete(`/inquiries/${id}`);
+      setInquiries(prev => prev.filter(inquiry => inquiry.id !== id));
+    } catch {
+      alert('문의 삭제에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="min-h-screen pb-50 bg-white">
       {/* 상단바 */}
@@ -93,19 +103,13 @@ export default function MyInquiryPage({ isAdmin = false }) {
             inquiries.map(inquiry => {
               const dragX = dragXMap[inquiry.id] || 0;
               const isDragging = draggedId === inquiry.id;
-              return (
-                <div key={inquiry.id} className="relative overflow-hidden">
-                  {/* 문의 카드 */}
+              if (isAdmin) {
+                // 관리자: 슬라이드 없이 카드만 클릭 가능
+                return (
                   <div
-                    className="py-3 border-b border-gray-100 bg-white pr-20"
-                    style={{
-                      transform: `translateX(${dragX}px)`,
-                      transition: isDragging ? 'none' : 'transform 0.2s',
-                    }}
-                    onTouchStart={e => handleTouchStart(e, inquiry.id)}
-                    onTouchMove={e => handleTouchMove(e, inquiry.id)}
-                    onTouchEnd={() => handleTouchEnd(inquiry.id)}
-                    onClick={() => navigate(isAdmin ? `/admin/inquiry/${inquiry.id}` : `/inquiry/${inquiry.id}`)}
+                    key={inquiry.id}
+                    className="py-3 border-b border-gray-100 bg-white relative"
+                    onClick={() => navigate(`/admin/inquiry/${inquiry.id}`)}
                   >
                     <div className="font-bold text-sm mb-1">{inquiry.title}</div>
                     <div className="text-xs text-gray-400 mb-1">
@@ -119,20 +123,50 @@ export default function MyInquiryPage({ isAdmin = false }) {
                       <div className="mt-0.5">{getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기')}</div>
                     )}
                   </div>
-                  {/* 삭제 버튼 */}
-                  <button
-                    className="absolute top-0 h-full w-20 bg-red-500 text-white font-bold text-base z-10 duration-300"
-                    style={{
-                      left: `calc(100% + ${dragX}px)`,
-                      transition: isDragging ? 'none' : 'left 0.2s',
-                      pointerEvents: Math.abs(dragX) > 40 ? 'auto' : 'none',
-                    }}
-                    onClick={() => {/* 삭제 기능 구현 필요시 여기에 */}}
-                  >
-                    삭제
-                  </button>
-                </div>
-              );
+                );
+              } else {
+                // 일반 사용자: 슬라이드/삭제 가능
+                return (
+                  <div key={inquiry.id} className="relative overflow-hidden">
+                    {/* 문의 카드 */}
+                    <div
+                      className="py-3 border-b border-gray-100 bg-white pr-20"
+                      style={{
+                        transform: `translateX(${dragX}px)`,
+                        transition: isDragging ? 'none' : 'transform 0.2s',
+                      }}
+                      onTouchStart={e => handleTouchStart(e, inquiry.id)}
+                      onTouchMove={e => handleTouchMove(e, inquiry.id)}
+                      onTouchEnd={() => handleTouchEnd(inquiry.id)}
+                      onClick={() => navigate(`/inquiry/${inquiry.id}`)}
+                    >
+                      <div className="font-bold text-sm mb-1">{inquiry.title}</div>
+                      <div className="text-xs text-gray-400 mb-1">
+                        {(() => {
+                          const dateObj = new Date(inquiry.created_at);
+                          if (isNaN(dateObj.getTime())) return inquiry.created_at;
+                          return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+                        })()}
+                      </div>
+                      {getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기') && (
+                        <div className="mt-0.5">{getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기')}</div>
+                      )}
+                    </div>
+                    {/* 삭제 버튼: 일반 사용자만 */}
+                    <button
+                      className="absolute top-0 h-full w-20 bg-red-500 text-white font-bold text-base z-10 duration-300"
+                      style={{
+                        left: `calc(100% + ${dragX}px)`,
+                        transition: isDragging ? 'none' : 'left 0.2s',
+                        pointerEvents: Math.abs(dragX) > 40 ? 'auto' : 'none',
+                      }}
+                      onClick={() => handleDelete(inquiry.id)}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                );
+              }
             })
           )
         )}
@@ -148,7 +182,6 @@ export default function MyInquiryPage({ isAdmin = false }) {
           <img src="/add.png" alt="문의하기" className="w-8 h-8 brightness-0 invert" />
         </button>
       )}
-      <BottomBar />
     </div>
   );
 }

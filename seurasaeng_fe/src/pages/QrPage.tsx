@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
-import { MdAccountCircle } from 'react-icons/md';
 
 const QrPage: React.FC = () => {
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
@@ -117,7 +116,7 @@ const QrPage: React.FC = () => {
                   className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-14 h-14 object-cover rounded-full bg-white"
                 />
               ) : (
-                <MdAccountCircle size={56} color="#5382E0" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full" />
+                <img src="/ceni-face.webp" alt="기본 프로필" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-14 h-14 object-contain rounded-full bg-white" />
               )}
             </div>
             {/* flex-grow로 남는 공간 채우기 */}

@@ -1,15 +1,28 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import TopBar from '../components/TopBar';
+import apiClient from '../libs/axios';
 
 export default function NoticeWritePage() {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [noticeContent, setNoticeContent] = useState('');
 
-  const handleSubmit = () => {
-    // TODO: 공지 등록 로직 구현
-    navigate(-1);
+  const handleSubmit = async () => {
+    try {
+      const res = await apiClient.post('/notices', {
+        title,
+        content: noticeContent,
+      });
+      const noticeId = res.data?.id || res.data?.notice_id;
+      if (noticeId) {
+        navigate(`/notice/${noticeId}`, { replace: true });
+      } else {
+        navigate('/admin/notice');
+      }
+    } catch {
+      alert('공지 등록에 실패했습니다.');
+    }
   };
 
   const isValid = title.trim() !== '' && noticeContent.trim() !== '';

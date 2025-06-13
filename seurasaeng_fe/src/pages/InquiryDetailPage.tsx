@@ -1,11 +1,14 @@
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import apiClient from '../libs/axios';
-import BottomBar from '../components/BottomBar';
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 
 const InquiryDetailPage = ({ isAdmin = false }) => {
   const { id } = useParams();
+  const location = useLocation();
+  const initialInquiry = location.state as InquiryType | null;
+  const [inquiry, setInquiry] = useState<InquiryType>(initialInquiry);
   const [loading, setLoading] = useState(true);
   const [answer, setAnswer] = useState('');
 
@@ -19,8 +22,8 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
     answer?: string;
     answered_at?: string;
     answer_status?: boolean;
+    inquiry_id?: number;
   } | null;
-  const [inquiry, setInquiry] = useState<InquiryType>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -37,7 +40,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
       <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16 flex flex-col">
         <TopBar title="1:1 문의" />
         <div className="flex-1 flex items-center justify-center text-gray-400">로딩 중...</div>
-        <BottomBar />
+        {!isAdmin && <BottomBar />}
       </div>
     );
   }
@@ -46,7 +49,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
       <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16 flex flex-col">
         <TopBar title="1:1 문의" />
         <div className="flex-1 flex items-center justify-center text-gray-400">존재하지 않는 문의입니다.</div>
-        <BottomBar />
+        {!isAdmin && <BottomBar />}
       </div>
     );
   }
@@ -55,10 +58,21 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
   const dateObj = new Date(dateStr);
   const formattedDate = `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
 
-  const handleAnswerSubmit = () => {
-    // TODO: 답변 등록 로직 구현
-    alert('답변이 등록되었습니다. (실제 저장은 미구현)');
-    setAnswer('');
+  const handleAnswerSubmit = async () => {
+    if (!id) return;
+    try {
+      await apiClient.post(`/inquiries/${id}/answer`, { content: answer });
+      setAnswer('');
+      // 답변 등록 후 상세 페이지 새로고침
+      setLoading(true);
+      apiClient.get(`/inquiries/${id}`)
+        .then(res => {
+          setInquiry(res.data);
+        })
+        .finally(() => setLoading(false));
+    } catch {
+      alert('답변 등록에 실패했습니다.');
+    }
   };
 
   const isAnswerValid = answer.trim() !== '';
@@ -72,7 +86,11 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
       <div className="px-5 pt-20 pb-2">
         <div className="text-[#5382E0] font-bold text-base mb-1">{inquiry.title}</div>
         <div className="text-xs text-gray-400 mb-4">{formattedDate}</div>
-        <span className="inline-block text-xs bg-[#5382E0] text-white rounded px-2 py-0.5 font-semibold mb-2">{inquiry.answer_status ? '답변완료' : '답변대기'}</span>
+        {inquiry.answer_status ? (
+          <span className="text-xs text-white bg-[#5382E0] rounded px-2 py-0.5 font-semibold mb-2">답변완료</span>
+        ) : (
+          <span className="text-xs text-white bg-[#DEE9FF] rounded px-2 py-0.5 font-semibold mb-2">답변대기</span>
+        )}
       </div>
 
       {/* 문의 내용 */}
@@ -85,18 +103,30 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
         <>
           <div className="mx-5 text-xs text-gray-400 mb-1 font-semibold">관리자 답변</div>
           <div className="mx-5 mb-2 bg-white border border-gray-400 rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
-            {inquiry.answer}
-            {inquiry.answered_at && (
-              <div className="mt-3 text-xs text-gray-400">
-                답변일: {(() => {
-                  const match = (inquiry.answered_at || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-                  if (match) {
-                    return `${match[1]}.${match[2]}.${match[3]} ${match[4]}:${match[5]}`;
-                  }
-                  return inquiry.answered_at;
-                })()}
-              </div>
-            )}
+            {typeof inquiry.answer === 'string'
+              ? inquiry.answer
+              : (inquiry.answer && typeof inquiry.answer === 'object' && 'answer_content' in inquiry.answer
+                  ? (inquiry.answer as { answer_content: string }).answer_content
+                  : '')}
+            {/* 답변일 */}
+            {(() => {
+              const answerObj = inquiry.answer;
+              const answerCreated = (answerObj && typeof answerObj === 'object' && 'created_at' in answerObj)
+                ? (answerObj as { created_at: string }).created_at
+                : inquiry.answered_at;
+              if (answerCreated) {
+                const match = (answerCreated || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+                if (match) {
+                  return (
+                    <div className="mt-3 text-xs text-gray-400">
+                      답변일: {`${match[1]}.${match[2]}.${match[3]} ${match[4]}:${match[5]}`}
+                    </div>
+                  );
+                }
+                return <div className="mt-3 text-xs text-gray-400">답변일: {answerCreated}</div>;
+              }
+              return null;
+            })()}
           </div>
         </>
       )}
@@ -118,7 +148,7 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
           </button>
         </div>
       )}
-      <BottomBar />
+      {!isAdmin && <BottomBar />}
     </div>
   );
 };

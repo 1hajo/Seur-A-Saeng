@@ -1,25 +1,30 @@
 import { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import TopBar from '../components/TopBar';
+import { useLocation } from 'react-router-dom';
+import apiClient from '../libs/axios';
 
-// 임시 사용자 정보 (실제 서비스에서는 QR 데이터에서 받아와야 함)
-const mockUser = {
-  name: '세니',
-  from: '아이티센 타워',
-  to: '금정역',
-};
-const currentCount = 31; // 예시: 10명
 const maxCount = 45; // 목 데이터
+
+interface ValidUserResDTO {
+  boarding_time: string;
+  user_name: string;
+  departure: string;
+  destination: string;
+}
 
 const QrScanPage = () => {
   const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
   const [scanStatus, setScanStatus] = useState<'idle'|'success'|'fail'>('idle');
-  const [scannedUser, setScannedUser] = useState<typeof mockUser | null>(null);
-  const [scanTime, setScanTime] = useState<Date | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const timeoutRef = useRef<number | null>(null);
   const isScanningRef = useRef(true);
   const hasStartedRef = useRef(false);
+  const location = useLocation();
+  const shuttleId = location.state?.shuttleId;
+  const [shuttleCount, setShuttleCount] = useState<number | null>(null);
+  const [userInfo, setUserInfo] = useState<ValidUserResDTO | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // 카메라 권한 확인
   useEffect(() => {
@@ -40,8 +45,9 @@ const QrScanPage = () => {
     if (!cameraPermission) return;
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
+    let html5QrCode: Html5Qrcode | null = null;
     const startScanner = async () => {
-      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode = new Html5Qrcode("reader");
       isScanningRef.current = true;
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length) {
@@ -60,13 +66,31 @@ const QrScanPage = () => {
             fps: 10,
             aspectRatio: 1.0,
           },
-          (decodedText) => {
+          async (decodedText) => {
             if (!isScanningRef.current) return;
             if (!decodedText || decodedText.trim() === '') return;
             isScanningRef.current = false;
-            setScannedUser(mockUser);
-            setScanTime(new Date());
-            setScanStatus('success');
+            try {
+              const res = await apiClient.post('/users/me/qr/valid', null, {
+                params: { qrCode: decodedText, shuttle_id: shuttleId }
+              });
+              setUserInfo(res.data);
+              setScanStatus('success');
+              setAuthError(null);
+              // 인증 성공 후 탑승 인원 다시 fetch
+              if (shuttleId) {
+                try {
+                  const countRes = await apiClient.get(`/shuttle/count/${shuttleId}`);
+                  setShuttleCount(countRes.data.count);
+                } catch {
+                  setShuttleCount(null);
+                }
+              }
+            } catch {
+              setUserInfo(null);
+              setScanStatus('fail');
+              setAuthError('인증에 실패했습니다.');
+            }
             if (window.navigator.vibrate) {
               window.navigator.vibrate(200);
             }
@@ -83,6 +107,12 @@ const QrScanPage = () => {
     startScanner();
     return () => {
       hasStartedRef.current = false;
+      if (html5QrCode) {
+        (async () => {
+          try { await html5QrCode.stop(); } catch {/* ignore stop error */}
+          try { await html5QrCode.clear(); } catch {/* ignore clear error */}
+        })();
+      }
     };
   }, [cameraPermission]);
 
@@ -91,8 +121,7 @@ const QrScanPage = () => {
     if (scanStatus === 'success' || scanStatus === 'fail') {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = window.setTimeout(() => {
-        setScannedUser(null);
-        setScanTime(null);
+        setUserInfo(null);
         setScanStatus('idle');
         isScanningRef.current = true;
       }, 2500);
@@ -101,6 +130,14 @@ const QrScanPage = () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [scanStatus]);
+
+  // 셔틀 탑승 인원 fetch
+  useEffect(() => {
+    if (!shuttleId) return;
+    apiClient.get(`/shuttle/count/${shuttleId}`)
+      .then(res => setShuttleCount(res.data.count))
+      .catch(() => setShuttleCount(null));
+  }, [shuttleId]);
 
   // 색상 결정 함수
   const getCountColor = (count: number) => {
@@ -189,29 +226,17 @@ const QrScanPage = () => {
             카메라 접근 권한을 허용해주세요.
           </div>
         )}
-        {/* 사용자 정보 mock 데이터 표시 */}
+        {/* 사용자 인증 결과 표시 */}
         <div className="w-full min-h-[70px] flex flex-col items-center justify-center mt-4 mb-2">
-          {scanStatus === 'success' && scannedUser ? (
+          {scanStatus === 'success' && userInfo ? (
             <div className="flex flex-col items-center animate-fade-in">
-              <div className="text-lg font-bold text-[#5382E0] mb-1">{scannedUser.name}</div>
-              <div className="text-base text-gray-700 mb-1">{scannedUser.from} → {scannedUser.to}</div>
-              {scanTime && (
-                <div className="text-xs text-gray-400 mt-1">
-                  {scanTime.toLocaleString('ko-KR', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                  })}
-                </div>
-              )}
+              <div className="text-lg font-bold text-[#5382E0] mb-1">{userInfo.user_name}</div>
+              <div className="text-base text-gray-700 mb-1">{userInfo.departure} → {userInfo.destination}</div>
+              <div className="text-xs text-gray-400 mt-1">탑승일: {userInfo.boarding_time}</div>
             </div>
-          ) : scanStatus === 'fail' ? (
+          ) : scanStatus === 'fail' && authError ? (
             <div className="text-base text-red-500 font-semibold text-center">
-              QR 코드 인식에 실패했습니다.<br />다시 시도해 주세요.
+              {authError}
             </div>
           ) : cameraReady ? (
             <div className="text-base text-sm font-medium text-center">
@@ -224,7 +249,7 @@ const QrScanPage = () => {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#fdfdfe]">
         <div className="text-xl text-center w-full max-w-md mx-auto">
           <span>탑승 인원: </span>
-          <span className={getCountColor(currentCount)}>{currentCount}</span>
+          <span className={getCountColor(shuttleCount ?? 0)}>{shuttleCount === null || shuttleCount === undefined ? '-' : shuttleCount}</span>
           <span> / {maxCount}</span>
         </div>
       </div>
