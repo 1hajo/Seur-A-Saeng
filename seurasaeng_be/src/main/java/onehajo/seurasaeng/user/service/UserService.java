@@ -217,7 +217,7 @@ public class UserService {
 
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         // 사용자 정보 수정
-        if (info.getPassword()!=null) user.setPassword(info.getPassword());
+        if (info.getPassword()!=null) user.setPassword(passwordEncoder.encode(info.getPassword()));
         if (info.getImage()!=null) user.setImage(info.getImage());
         if (info.getFavorites_work_id()!=0) {
             user.setFavorites_work_id(shuttleRepository.getReferenceById(info.getFavorites_work_id()));
