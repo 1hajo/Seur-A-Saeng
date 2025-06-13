@@ -269,23 +269,28 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    if (!route?.id) return;
+  if (!route?.id) return;
 
-    let interval: any = null;
+  let interval: any = null;
 
-    if (isBusOperating) {
+  // 현재 선택된 노선이 실제 WebSocket에서 운행 중인 노선인지 확인
+  if (isBusOperating && gpsData) {
+    const isSameRoute = gpsData.latitude !== null && gpsData.longitude !== null;
+
+    if (isSameRoute) {
       fetchPassengerCount(String(route.id));
       interval = setInterval(() => {
         fetchPassengerCount(String(route.id));
       }, 2000);
-    } else {
-      setCurrentCount(0);
     }
+  } else {
+    setCurrentCount(0);
+  }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isBusOperating, route]);
+  return () => {
+    if (interval) clearInterval(interval);
+  };
+}, [isBusOperating, gpsData, route]);
 
   const getBusImage = (count: number) => {
     if (count <= 15) return BUS_MARKER_IMAGE_BLUE;
