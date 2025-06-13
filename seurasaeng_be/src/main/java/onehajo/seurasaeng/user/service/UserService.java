@@ -81,7 +81,7 @@ public class UserService {
         String token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail(), request.getRole());
         qrService.generateQRCode(user.getId(), user.getEmail());
 
-        redisTokenService.saveToken(user.getId(), token);
+        redisTokenService.saveTokenUser(user.getId(), token);
 
         return LoginResDTO.builder()
                 .token(token)
@@ -114,7 +114,7 @@ public class UserService {
         managerRepository.flush();
 
         String token = jwtUtil.generateTokenAdmin(manager.getId(), manager.getEmail(), request.getRole());
-        redisTokenService.saveToken(manager.getId(), token);
+        redisTokenService.saveTokenAdmin(manager.getId(), token);
 
         return LoginResDTO.builder()
                 .token(token)
@@ -129,7 +129,7 @@ public class UserService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        String token = redisTokenService.getToken(user.getId());
+        String token = redisTokenService.getTokenUser(user.getId());
         if (token == null || token.isBlank()) {
             throw new RuntimeException("토큰이 존재하지 않습니다.");
         }
@@ -154,7 +154,7 @@ public class UserService {
         Manager manager = managerRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("관리자를 찾을 수 없습니다."));
 
-        String token = redisTokenService.getToken(manager.getId());
+        String token = redisTokenService.getTokenAdmin(manager.getId());
         if (token == null || token.isBlank()) {
             throw new RuntimeException("토큰이 존재하지 않습니다.");
         }

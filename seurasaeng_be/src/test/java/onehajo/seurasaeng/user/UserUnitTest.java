@@ -187,7 +187,7 @@ public class UserUnitTest {
     void loginUser_NoToken_ShouldThrowException() {
         LoginReqDTO request = createLoginRequest("test@gmail.com", "password123");
         given(userRepository.findByEmail(request.getEmail())).willReturn(Optional.of(testUser));
-        given(redisTokenService.getToken(testUser.getId())).willReturn(null);
+        given(redisTokenService.getTokenUser(testUser.getId())).willReturn(null);
 
         assertThatThrownBy(() -> userService.loginUser(request))
                 .isInstanceOf(RuntimeException.class)
@@ -199,7 +199,7 @@ public class UserUnitTest {
     void loginUser_WrongPassword_ShouldThrowException() {
         LoginReqDTO request = createLoginRequest("test@gmail.com", "wrongPassword");
         given(userRepository.findByEmail(request.getEmail())).willReturn(Optional.of(testUser));
-        given(redisTokenService.getToken(testUser.getId())).willReturn("existing-token");
+        given(redisTokenService.getTokenUser(testUser.getId())).willReturn("existing-token");
         given(passwordEncoder.matches(request.getPassword(), testUser.getPassword())).willReturn(false);
 
         assertThatThrownBy(() -> userService.loginUser(request))

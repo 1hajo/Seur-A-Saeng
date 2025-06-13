@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 public class RedisTokenService {
 
     private final String TOKEN_PREFIX = "JWT:";
+    private final String ROLE_USER = "user";
+    private final String ROLE_ADMIN = "admin";
 
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -19,9 +21,27 @@ public class RedisTokenService {
         redisTemplate.opsForValue().set(TOKEN_PREFIX + id, token);
     }
 
+    public void saveTokenUser(long id, String token) {
+        redisTemplate.opsForValue().set(TOKEN_PREFIX + ROLE_USER + id, token);
+    }
+
+    public void saveTokenAdmin(long id, String token) {
+        redisTemplate.opsForValue().set(TOKEN_PREFIX + ROLE_ADMIN + id, token);
+    }
+
     // 토큰 조회(id)
     public String getToken(long id) {
         return redisTemplate.opsForValue().get(TOKEN_PREFIX + id);
+    }
+
+    // 토큰 조회(id)
+    public String getTokenUser(long id) {
+        return redisTemplate.opsForValue().get(TOKEN_PREFIX + ROLE_USER + id);
+    }
+
+    // 토큰 조회(id)
+    public String getTokenAdmin(long id) {
+        return redisTemplate.opsForValue().get(TOKEN_PREFIX + ROLE_ADMIN + id);
     }
 
     // 토큰 조회(email)
