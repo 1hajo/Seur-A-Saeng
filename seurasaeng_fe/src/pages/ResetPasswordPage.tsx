@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
@@ -7,13 +7,11 @@ export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccess(false);
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       setError("올바른 이메일 주소를 입력해 주세요.");
       return;
@@ -23,10 +21,9 @@ export default function ResetPasswordPage() {
       // 실제 API 연동
       await apiClient.post(`/users/forgot-password?email=${encodeURIComponent(email)}`);
       setLoading(false);
-      setSuccess(true);
       // 토스트 메시지 플래그를 localStorage에 저장
       localStorage.setItem('toast', '임시 비밀번호를 전송하였습니다.');
-      navigate('/login');
+      navigate('/login', { replace: true });
     } catch {
       setLoading(false);
       setError("임시 비밀번호 전송에 실패했습니다. 다시 시도해 주세요.");
