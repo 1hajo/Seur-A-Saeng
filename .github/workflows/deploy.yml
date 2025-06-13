@@ -1,0 +1,78 @@
+name: Frontend Deploy
+
+on:
+  push:
+    branches: [ all ]
+    paths: 
+      - 'seurasaeng_fe/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create .env file for deployment
+      run: |
+        cd seurasaeng_fe
+        cat > .env << EOF
+        VITE_SOCKET_URL=wss://seurasaeng.site/ws
+        VITE_API_BASE_URL=https://seurasaeng.site/api
+        VITE_MOBILITY_API_KEY=b058afe703170142bbc3095397401d17
+        VITE_KAKAOMAP_API_KEY=73164f05aee7b0290c9b5b402b27c28a
+        VITE_MOBILITY_API_BASE_URL=https://apis-navi.kakaomobility.com/v1/directions
+        VITE_KAKAOMAP_API_BASE_URL=//dapi.kakao.com/v2/maps/sdk.js
+        VITE_PERPLEXITY_API_KEY=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
+        EOF
+        echo "✅ .env file created for deployment"
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: seurasaeng_fe/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd seurasaeng_fe
+        npm ci
+    
+    - name: Build React app
+      run: |
+        cd seurasaeng_fe
+        npm run build
+    
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        cd seurasaeng_fe
+        docker buildx build --platform linux/arm64 -t seuraseung-frontend:latest . --load
+    
+    - name: Save Docker image
+      run: |
+        docker save seuraseung-frontend:latest | gzip > seurasaeng_fe-image.tar.gz
+    
+    - name: Copy files to Front Server
+      uses: appleboy/scp-action@v0.1.5
+      with:
+        host: ${{ secrets.FRONT_SERVER_HOST }}
+        username: ubuntu
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/"
+        target: "/home/ubuntu/"
+    
+    - name: Deploy Frontend
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.FRONT_SERVER_HOST }}
+        username: ubuntu
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /home/ubuntu/seurasaeng_fe
+          gunzip -c /home/ubuntu/seurasaeng_fe-image.tar.gz | docker load
+          docker-compose down
+          docker-compose up -d
