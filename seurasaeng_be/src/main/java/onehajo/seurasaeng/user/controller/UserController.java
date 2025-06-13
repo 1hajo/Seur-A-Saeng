@@ -57,8 +57,8 @@ public class UserController {
     @PostMapping("/verify-email")
     public ResponseEntity<String> verifyEmail(@RequestParam("email") String email) throws MessagingException {
         String token = userService.validateDuplicateUserEmail(email);
-        mailService.joinEmail(email);
         log.info("이메일 중복 확인");
+
         return ResponseEntity.ok(token);
     }
 
