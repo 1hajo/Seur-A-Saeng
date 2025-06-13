@@ -116,7 +116,7 @@ export default function NoticePage({ isAdmin = false }) {
         ) : notices.length === 0 ? (
           <div className="text-center text-gray-400 py-12">공지사항이 없습니다.</div>
         ) : null}
-        {notices.map(notice => {
+        {[...notices].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(notice => {
           if (isAdmin) {
             const dragX = dragXMap[notice.id] || 0;
             const isDragging = draggedId === notice.id;
