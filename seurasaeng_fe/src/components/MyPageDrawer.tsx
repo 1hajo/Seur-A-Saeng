@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import type { MyPageDrawerProps } from '../types/ComponentTypes';
+import { MdAccountCircle } from 'react-icons/md';
 
 const DRAG_CLOSE_THRESHOLD = 80; // px
 const MAX_OVERLAY_OPACITY = 0.18;
@@ -125,7 +126,7 @@ const MyPageDrawer: React.FC<MyPageDrawerProps> = ({ open, onClose, onDrag }) =>
                   className="w-20 h-20 object-cover rounded-full"
                 />
               ) : (
-                <img src="/ceni-face.webp" alt="기본 프로필" className="w-20 h-20 object-contain rounded-full" />
+                <MdAccountCircle size={80} color="#5382E0" />
               )}
             </div>
             <div className="text-sm">{userName}</div>
