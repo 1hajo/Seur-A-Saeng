@@ -6,7 +6,9 @@ import apiClient from '../libs/axios';
 const formatDate = (dateStr: string) => {
   const dateObj = new Date(dateStr);
   if (isNaN(dateObj.getTime())) return dateStr;
-  return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+  // KST 변환: 입력값이 UTC 기준이면 9시간 더함
+  const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
+  return `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
 };
 
 interface RideHistoryItem {
