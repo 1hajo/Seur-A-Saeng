@@ -56,7 +56,11 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
 
   const dateStr = inquiry.created_at || inquiry.date || '';
   const dateObj = new Date(dateStr);
-  const formattedDate = `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+  let formattedDate = dateStr;
+  if (!isNaN(dateObj.getTime())) {
+    const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
+    formattedDate = `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
+  }
 
   const handleAnswerSubmit = async () => {
     if (!id) return;
@@ -115,11 +119,12 @@ const InquiryDetailPage = ({ isAdmin = false }) => {
                 ? (answerObj as { created_at: string }).created_at
                 : inquiry.answered_at;
               if (answerCreated) {
-                const match = (answerCreated || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-                if (match) {
+                const dateObj = new Date(answerCreated);
+                if (!isNaN(dateObj.getTime())) {
+                  const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
                   return (
                     <div className="mt-3 text-xs text-gray-400">
-                      답변일: {`${match[1]}.${match[2]}.${match[3]} ${match[4]}:${match[5]}`}
+                      답변일: {`${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`}
                     </div>
                   );
                 }
