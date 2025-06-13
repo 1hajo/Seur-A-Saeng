@@ -232,7 +232,11 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
             <div key={idx} className="w-full max-w-md bg-[#5382E0] rounded-xl text-white flex flex-col items-center mb-6 py-3 px-4 relative">
               {/* 노선 헤더 */}
               <div className="text-lg font-bold mb-1 text-center w-full">
-                {locations[locationIdx]} → 아이티센 타워
+                {tab === '퇴근' ? (
+                  <>아이티센 타워 → {locations[locationIdx]}</>
+                ) : (
+                  <>{locations[locationIdx]} → 아이티센 타워</>
+                )}
               </div>
               {/* 승/하차 장소 안내 (카드 안쪽, 헤더 아래) */}
               <div className="text-xs text-blue-100 mb-8 w-full text-center">
