@@ -53,13 +53,8 @@ public class NotiController {
     @GetMapping("/{id}")
     public ResponseEntity<?> searchNoti(HttpServletRequest request, @PathVariable Long id) throws Exception {
         NotiResDTO notiResDTO = notiService.read(id);
+        userService.readNoti(request, id);
 
-        String token = request.getHeader("Authorization").replace("Bearer ", "");
-        String role = jwtUtil.getRoleFromToken(token);
-
-        if (role.equals("user")) {
-            userService.readNoti(request, id);
-        }
         return ResponseEntity.ok(notiResDTO);
     }
 
