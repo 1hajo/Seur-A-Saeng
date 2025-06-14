@@ -2,7 +2,7 @@ name: Backend Deploy
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ cicd ]
     paths: 
       - 'seurasaeng_be/**'
 

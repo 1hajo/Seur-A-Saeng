@@ -2,7 +2,7 @@ name: Frontend Deploy
 
 on:
   push:
-    branches: [ fe ]
+    branches: [ cicd ]
     paths: 
       - 'seurasaeng_fe/**'
 
