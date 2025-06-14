@@ -34,7 +34,7 @@ INSERT INTO seurasaeng_prod.timetable (timetable_id, shuttle_id, departure_time,
 (8, 1, '09:40', '7번출구 앞', 'G동 옆 도로', 15, 45);
 ON CONFLICT (timetable_id) DO NOTHING;
 
--- 출근 셔틀 2 (양재역 -> 아이티센타워) 시간표
+-- 출근 셔틀 2 (양재역 -> 아이티센타워) 시간표 1
 INSERT INTO seurasaeng_prod.timetable (timetable_id, shuttle_id, departure_time, boarding_location, dropoff_location, arrival_minutes, total_seats) VALUES
 (9, 2, '07:00', '9번출구 서초문화예술회관 앞', 'G동 옆 도로', 20, 45),
 (10, 2, '07:20', '9번출구 서초문화예술회관 앞', 'G동 옆 도로', 20, 45),
