@@ -17,17 +17,21 @@ export default function RegisterPage() {
   const [codeVerified, setCodeVerified] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [serverCode, setServerCode] = useState('');
+  const [signupLoading, setSignupLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSignupLoading(true);
     if (!email || !name || !password || !passwordConfirm) {
       setError('모든 필드를 입력해주세요.');
+      setSignupLoading(false);
       return;
     }
     if (password !== passwordConfirm) {
       setError('비밀번호가 일치하지 않습니다.');
+      setSignupLoading(false);
       return;
     }
     try {
@@ -43,8 +47,10 @@ export default function RegisterPage() {
         localStorage.setItem('accessToken', token);
         localStorage.setItem('user', JSON.stringify(userFields));
         navigate('/main'); // 회원가입 후 메인 페이지로 이동
+        return; // 성공 시 setSignupLoading(false) 실행하지 않음
       } else {
         setError('토큰이 응답에 없습니다.');
+        setSignupLoading(false);
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -57,6 +63,7 @@ export default function RegisterPage() {
       } else {
         setError('회원가입 실패');
       }
+      setSignupLoading(false); // 실패 시에만 복구
     }
   };
 
@@ -140,11 +147,74 @@ export default function RegisterPage() {
               }}
               disabled={(emailChecked && codeSent) || codeVerified}
             />
+            {/* 중복확인 버튼: 성공 전까지만 표시 */}
+            {!emailChecked && !codeVerified && (
+              <button
+                type="button"
+                className={`flex-shrink-0 min-w-[72px] px-2 py-3 rounded-lg text-white text-sm font-normal transition text-base appearance-none ${codeVerified ? 'bg-gray-200 cursor-not-allowed' : 'bg-[#5382E0] hover:bg-blue-600'} ${(emailLoading || !email || !email.endsWith('@gmail.com')) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                onClick={async () => {
+                  setError('');
+                  if (!email) {
+                    setError('이메일을 입력해주세요.');
+                    return;
+                  }
+                  setEmailLoading(true);
+                  try {
+                    const res = await apiClient.post('/users/verify-email', undefined, { params: { email } });
+                    setEmail(res.data);
+                    setEmailChecked(true);
+                  } catch (err) {
+                    if (axios.isAxiosError(err)) {
+                      const msg = err.response?.data?.error || '요청 실패';
+                      setError(msg);
+                      setEmailChecked(false);
+                    } else {
+                      setError('요청 실패');
+                      setEmailChecked(false);
+                    }
+                  } finally {
+                    setEmailLoading(false);
+                  }
+                }}
+                disabled={emailLoading || !email || !email.endsWith('@gmail.com')}
+              >
+                {emailLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin h-4 w-4 mr-1 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                  </span>
+                ) : (
+                  '중복확인'
+                )}
+              </button>
+            )}
+          </div>
+          {/* 회사 이메일 안내 문구 or 사용 가능 안내 */}
+          <div className={`text-xs mb-1 ${emailChecked && !error ? 'text-green-600' : 'text-gray-500'}`}>
+            {emailChecked && !error
+              ? '사용 가능한 이메일입니다.'
+              : '회사 이메일(@gmail.com)로 가입해주세요.'}
+          </div>
+          {/* 인증 코드 받기 버튼 (중복확인 성공 시) */}
+          {emailChecked && !error && !codeSent && !codeVerified && (
             <button
               type="button"
-              className={`flex-shrink-0 min-w-[72px] px-2 py-3 rounded-lg text-white text-sm font-normal transition text-base appearance-none ${codeVerified ? 'bg-gray-200 cursor-not-allowed' : 'bg-[#5382E0] hover:bg-blue-600'} ${(emailLoading || !email || !email.endsWith('@gmail.com') || (emailChecked && codeSent) || codeVerified) ? 'opacity-60 cursor-not-allowed' : ''}`}
-              onClick={handleEmailButton}
-              disabled={emailLoading || !email || !email.endsWith('@gmail.com') || (emailChecked && codeSent) || codeVerified}
+              className={`w-full py-3 rounded-lg bg-[#5382E0] text-white text-sm font-semibold shadow hover:bg-blue-600 transition mb-2 ${emailLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+              onClick={async () => {
+                setEmailLoading(true);
+                try {
+                  const res = await apiClient.post('/users/email', undefined, { params: { email } });
+                  setServerCode(String(res.data));
+                  setCodeSent(true);
+                } catch (err) {
+                  setError('인증 코드 전송에 실패했습니다.');
+                } finally {
+                  setEmailLoading(false);
+                }
+              }}
+              disabled={emailLoading}
             >
               {emailLoading ? (
                 <span className="flex items-center justify-center">
@@ -154,12 +224,10 @@ export default function RegisterPage() {
                   </svg>
                 </span>
               ) : (
-                emailChecked ? (codeSent ? '재전송' : '전송') : '중복확인'
+                '인증 코드 받기'
               )}
             </button>
-          </div>
-          {/* 회사 이메일 안내 문구 */}
-          <div className="text-xs text-gray-500 mb-1">회사 이메일(@gmail.com)로 가입해주세요.</div>
+          )}
           {/* 이메일 관련 에러 메시지 */}
           {(error === '이미 존재하는 회원입니다.') && (
             <div className="text-red-500 text-xs mt-1 mb-1">{error}</div>
@@ -220,10 +288,19 @@ export default function RegisterPage() {
           )}
           <button
             type="submit"
-            className={`w-full py-3 rounded-lg bg-[#5382E0] text-white text-base font-normal shadow hover:bg-blue-600 transition mt-8 ${(!pwValid || !pwMatch || !codeVerified) ? 'opacity-60 cursor-not-allowed' : ''}`}
-            disabled={!pwValid || !pwMatch || !codeVerified}
+            className={`w-full py-3 rounded-lg bg-[#5382E0] text-white text-base font-normal shadow hover:bg-blue-600 transition mt-8 ${(signupLoading || !pwValid || !pwMatch || !codeVerified) ? 'opacity-60 cursor-not-allowed' : ''}`}
+            disabled={signupLoading || !pwValid || !pwMatch || !codeVerified}
           >
-            회원가입
+            {signupLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin h-4 w-4 mr-1 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+              </span>
+            ) : (
+              '회원가입'
+            )}
           </button>
         </form>
       </div>
