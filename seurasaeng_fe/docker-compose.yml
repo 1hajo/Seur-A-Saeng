@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   frontend:
-    build: .
+    image: seuraseung-frontend:latest
     container_name: seurasaeng_frontend
     ports:
       - "80:80"

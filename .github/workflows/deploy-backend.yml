@@ -2,7 +2,7 @@ name: Backend Deploy
 
 on:
   push:
-    branches: [ cicd ]
+    branches: [ dev ]
     paths: 
       - 'seurasaeng_be/**'
 
@@ -23,25 +23,19 @@ jobs:
     - name: Build with Maven
       run: |
         cd seurasaeng_be
-        mvn clean package -DskipTests -T 1C
+        mvn clean package -DskipTests
     
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v3
-      with:
-        driver-opts: image=moby/buildkit:buildx-stable-1
     
     - name: Build Docker image
       run: |
         cd seurasaeng_be
-        docker buildx build \
-          --platform linux/arm64 \
-          --cache-from type=gha \
-          --cache-to type=gha,mode=max \
-          -t seuraseung-backend:latest . --load
+        docker buildx build --platform linux/arm64 -t seuraseung-backend:latest . --load
     
-    - name: Save Docker image (optimized)
+    - name: Save Docker image
       run: |
-        docker save seuraseung-backend:latest | pigz -1 > seurasaeng_be-image.tar.gz
+        docker save seuraseung-backend:latest | gzip > seurasaeng_be-image.tar.gz
     
     - name: Copy files to Front Server
       uses: appleboy/scp-action@v0.1.5
@@ -49,7 +43,7 @@ jobs:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "seurasaeng_be-image.tar.gz,seurasaeng_be/docker-compose.yml,seurasaeng_be/init.sql"
+        source: "seurasaeng_be-image.tar.gz,seurasaeng_be/"
         target: "/home/ubuntu/"
     
     - name: Deploy to Backend Server via Front Server
@@ -60,11 +54,11 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           chmod 600 ~/.ssh/susumon.pem
-          scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -C /home/ubuntu/seurasaeng_be-image.tar.gz ubuntu@10.0.2.166:/home/ubuntu/
+          scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be-image.tar.gz ubuntu@10.0.2.166:/home/ubuntu/
           scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be/ ubuntu@10.0.2.166:/home/ubuntu/
           ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 << 'ENDSSH'
           cd /home/ubuntu/seurasaeng_be
-          pigz -d < /home/ubuntu/seurasaeng_be-image.tar.gz | docker load
+          gunzip -c /home/ubuntu/seurasaeng_be-image.tar.gz | docker load
           cat > .env << EOF
           DB_URL=jdbc:postgresql://postgres:5432/postgres
           DB_USERNAME=postgres
@@ -87,6 +81,6 @@ jobs:
           spring.cloud.aws.region.static=ap-northeast-2
           spring.cloud.aws.s3.bucket=profile-qrcode
           EOF
-          docker-compose down --remove-orphans
+          docker-compose down
           docker-compose up -d
           ENDSSH
