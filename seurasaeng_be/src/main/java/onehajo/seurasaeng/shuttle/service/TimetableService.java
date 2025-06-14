@@ -1,0 +1,152 @@
+package onehajo.seurasaeng.shuttle.service;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import onehajo.seurasaeng.entity.Shuttle;
+import onehajo.seurasaeng.entity.Timetable;
+import onehajo.seurasaeng.shuttle.dto.ShuttleWithTimetableDto;
+import onehajo.seurasaeng.shuttle.dto.TimetableDto;
+import onehajo.seurasaeng.shuttle.dto.TimetableResponseDto;
+import onehajo.seurasaeng.shuttle.dto.UpdateTimetableRequestDto;
+import onehajo.seurasaeng.shuttle.exception.InvalidTimetableSizeException;
+import onehajo.seurasaeng.shuttle.exception.ShuttleNotFoundException;
+import onehajo.seurasaeng.shuttle.repository.ShuttleRepository;
+import onehajo.seurasaeng.shuttle.repository.TimetableRepository;
+import org.hibernate.sql.Update;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class TimetableService {
+
+    private final ShuttleRepository shuttleRepository;
+    private final TimetableRepository timetableRepository;
+
+    public TimetableResponseDto getTimetable() {
+        List<ShuttleWithTimetableDto> commuteShuttles = buildTimetableList(true); // 출근 셔틀 목록
+        List<ShuttleWithTimetableDto> offworkShuttles = buildTimetableList(false); // 퇴근 셔틀 목록
+
+        return TimetableResponseDto.builder()
+                .commute(commuteShuttles)
+                .offwork(offworkShuttles)
+                .build();
+    }
+
+    private List<ShuttleWithTimetableDto> buildTimetableList(boolean isCommute) {
+        // 출근 또는 퇴근 셔틀 조회
+        List<Shuttle> shuttles = shuttleRepository.findByIsCommute(isCommute);
+        List<ShuttleWithTimetableDto> shuttleWithTimetableDtoList = new ArrayList<>();
+
+        for (Shuttle shuttle : shuttles) {
+            List<Timetable> timetables = timetableRepository.findByShuttleOrderByDepartureTimeAsc(shuttle);
+
+            // 시간표가 없으면 건너뜀
+            if (timetables == null || timetables.isEmpty()) {
+                continue;
+            }
+
+            Timetable firstTimetable = timetables.getFirst(); // 첫 번째 시간표
+
+            // 출근이면 출발지, 퇴근이면 도착지
+            String spotName = "";
+            if (isCommute) {
+                spotName = shuttle.getDeparture().getLocationName();
+            } else {
+                spotName = shuttle.getDestination().getLocationName();
+            }
+
+            // 출근이면 boardingLocation, 퇴근이면 dropoffLocation
+            String boardingPoint = "";
+            if (isCommute) {
+                boardingPoint = firstTimetable.getBoardingLocation();
+            } else {
+                boardingPoint = firstTimetable.getDropoffLocation();
+            }
+
+            // 시간표 DTO 변환
+            List<TimetableDto> timetableDtos = new ArrayList<>();
+            for (int i = 0; i < timetables.size(); i++) {
+                Timetable timetable = timetables.get(i);
+
+                TimetableDto timetableDto = TimetableDto.builder()
+                        .turn((i + 1) + "회") // 1회, 2회 형식
+                        .departureTime(timetable.getDepartureTime().toString().substring(0, 5)) // "HH:mm" 포맷
+                        .build();
+
+                timetableDtos.add(timetableDto);
+            }
+
+            // 셔틀 + 시간표 DTO 구성
+            ShuttleWithTimetableDto shuttleWithTimetableDto = ShuttleWithTimetableDto.builder()
+                    .shuttleId(shuttle.getId())
+                    .shuttleName(shuttle.getShuttleName())
+                    .spotName(spotName)
+                    .duration(formatDuration(firstTimetable.getArrivalMinutes()))
+                    .totalSeats(formatTotalSeats(firstTimetable.getTotalSeats()))
+                    .boardingPoint(boardingPoint)
+                    .timetables(timetableDtos)
+                    .build();
+
+            shuttleWithTimetableDtoList.add(shuttleWithTimetableDto);
+        }
+
+        return shuttleWithTimetableDtoList;
+    }
+
+    @Transactional
+    public void updateTimetable(UpdateTimetableRequestDto request) {
+        Shuttle shuttle = shuttleRepository.findById(request.getShuttleId())
+                .orElseThrow(() -> new ShuttleNotFoundException(request.getShuttleId()));
+
+        // 기존 시간표 조회 (departureTime 오름차순 정렬)
+        List<Timetable> timetables = timetableRepository.findByShuttleOrderByDepartureTimeAsc(shuttle);
+
+        int totalSeats = timetables.getFirst().getTotalSeats();
+        int arrivalMinutes = timetables.getFirst().getArrivalMinutes();
+        String boardingLocation = timetables.getFirst().getBoardingLocation();
+        String dropoffLocation = timetables.getFirst().getDropoffLocation();
+
+        timetableRepository.deleteAll(timetables);
+        timetableRepository.flush();
+
+        // 요청 받은 시간표 리스트
+        List<UpdateTimetableRequestDto.TimetableDto> list = request.getTimetables();
+
+        List<Timetable> timetableEntities = new ArrayList<>();
+
+        for(UpdateTimetableRequestDto.TimetableDto dto : list) {
+            Timetable timetable = Timetable.builder()
+                    .shuttle(shuttle)
+                    .departureTime(LocalTime.parse(dto.getDepartureTime()))
+                    .arrivalMinutes(arrivalMinutes) // dto에 있다면
+                    .totalSeats(totalSeats) // dto에 있다면
+                    .boardingLocation(boardingLocation) // dto에 있다면
+                    .dropoffLocation(dropoffLocation) // dto에 있다면
+                    .build();
+            timetableEntities.add(timetable);
+        }
+
+        timetableRepository.saveAll(timetableEntities);
+    }
+
+    private String formatDuration(Integer minutes) {
+        if (minutes == null) {
+            return "";
+        }
+        return minutes + "분";
+    }
+
+    private String formatTotalSeats(Integer seats) {
+        if (seats == null) {
+            return "";
+        }
+        return seats + "명";
+    }
+}

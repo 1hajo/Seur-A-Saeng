@@ -1,0 +1,52 @@
+import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import TopBar from '../components/TopBar';
+import apiClient from '../libs/axios';
+
+export default function NoticeDetailPage() {
+  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
+
+  type NoticeType = {
+    id: number;
+    title: string;
+    content: string | null;
+    created_at: string;
+  };
+  const [notice, setNotice] = useState<NoticeType | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    apiClient.get(`/notices/${id}`)
+      .then(res => setNotice(res.data))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return <div className="text-center text-gray-400 py-20">로딩 중...</div>;
+  }
+  if (!notice) {
+    return <div className="text-center text-gray-400 py-20">존재하지 않는 공지입니다.</div>;
+  }
+
+  return (
+    <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16">
+      <TopBar title="공지사항" />
+      <div className="px-5 pt-20 pb-2">
+        <div className="text-2xl font-bold mb-2">{notice.title}</div>
+        <div className="text-xs text-gray-400 mb-4">
+          {(() => {
+            const dateObj = new Date(notice.created_at);
+            if (isNaN(dateObj.getTime())) return notice.created_at;
+            const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
+            return `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
+          })()}
+        </div>
+      </div>
+      <div className="mx-5 mb-4 border border-[#DEE9FF] rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
+        {notice.content}
+      </div>
+    </div>
+  );
+}

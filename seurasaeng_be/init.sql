@@ -1,0 +1,2 @@
+CREATE SCHEMA IF NOT EXISTS seurasaeng_test;
+CREATE SCHEMA IF NOT EXISTS seurasaeng_prod;

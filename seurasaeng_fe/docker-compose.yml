@@ -1,57 +1,8 @@
 version: '3.8'
 
-networks:
-  frontend-network:
-    driver: bridge
-
-volumes:
-  nginx_logs:
-    driver: local
-  certbot_www:
-    driver: local
-  certbot_conf:
-    driver: local
-
 services:
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: https://seurasaeng.site/api
-    image: seuraseung-frontend:latest
-    container_name: seuraseung-frontend
-    restart: unless-stopped
+    build: .
+    container_name: seurasaeng_frontend
     ports:
       - "80:80"
-      - "443:443"
-    networks:
-      - frontend-network
-    volumes:
-      - nginx_logs:/var/log/nginx
-      - /home/ubuntu/logs/nginx:/var/log/nginx
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    environment:
-      - NGINX_WORKER_PROCESSES=auto
-      - NGINX_WORKER_CONNECTIONS=1024
-    healthcheck:
-      test: ["CMD", "curl", "-f", "https://localhost/health", "-k"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    labels:
-      - "com.docker.compose.service=frontend"
-      - "com.seuraseung.service=frontend"
-      - "com.seuraseung.version=1.0.0"
-    depends_on:
-      - certbot
-
-  certbot:
-    image: certbot/certbot:latest
-    container_name: seuraseung-certbot
-    volumes:
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    command: certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@seurasaeng.site --agree-tos --no-eff-email -d seurasaeng.site -d www.seurasaeng.site
