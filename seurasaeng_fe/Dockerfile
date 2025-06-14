@@ -21,10 +21,6 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Add non-root user
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S nginx -u 1001 -G nginx
-
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
