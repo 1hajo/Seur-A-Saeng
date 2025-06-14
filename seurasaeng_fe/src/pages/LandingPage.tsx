@@ -1,8 +1,30 @@
 import { useNavigate } from 'react-router-dom';
 import OptimizedImage from '../components/OptimizedImage';
+import { useEffect, useState } from 'react';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    }
+  };
 
   return (
     <div className="flex flex-col justify-between items-center bg-[#fdfdfe] pt-12 pb-8">
@@ -36,6 +58,30 @@ export default function LandingPage() {
           로그인
         </button>
       </div>
+      {showInstallBanner && (
+        <div
+          className="fixed top-4 left-1/2 -translate-x-1/2 bg-white border rounded-xl shadow-lg px-6 py-4 flex items-center z-50"
+          style={{ minWidth: 320, maxWidth: '90vw' }}
+        >
+          <div className="flex-1">
+            <div className="font-bold text-base mb-1">앱 설치하고<br />더 편리하게 이용하세요!</div>
+            <div className="flex gap-2 mt-2">
+              <button
+                className="w-full bg-[#5382E0] text-white px-4 py-2 rounded-lg font-bold"
+                onClick={handleInstallClick}
+              >
+                앱 설치
+              </button>
+              <button
+                className="w-full rounded-lg border border-[#5382E0] text-[#5382E0]"
+                onClick={() => setShowInstallBanner(false)}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
