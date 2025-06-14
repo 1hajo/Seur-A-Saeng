@@ -7,6 +7,7 @@ import SlideTab from '../components/SlideTab';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios'; // 네 API 클라이언트 import
 import {API} from '../constants/api'; // API 엔드포인트 상수
+import CeniLoading from '../components/CeniLoading';
 
 // 즐겨찾기 노선 타입
 interface UserPreferences {
@@ -54,15 +55,17 @@ const fetchRouteData = async (): Promise<RoutesResponse> => {
 };
 
 export default function EmployeeGPSApp() {
-  const [activeTab, setActiveTab] = useState<RouteType>('출근');
+  const [activeTab, setActiveTab] = useState<RouteType>(() => {
+    const hour = new Date().getHours();
+    return hour < 12 ? '출근' : '퇴근';
+  });
   const [isMapReady, setIsMapReady] = useState(false);
   const [routeData, setRouteData] = useState<RoutesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const locationTabRef = useRef<HTMLDivElement>(null);
   const selectedBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const [locationIdx, setLocationIdx] = useState(0);
+  const [locationIdx, setLocationIdx] = useState(-1);
   const [userPrefs, setUserPrefs] = useState<UserPreferences | null>(null);
 
   useEffect(() => {
@@ -74,16 +77,10 @@ export default function EmployeeGPSApp() {
         // 2. 노선 데이터 요청
         const data = await fetchRouteData();
         setRouteData(data);
-        // 3. 오전/오후에 따라 탭/노선 자동 선택
-        const now = new Date();
-        const hour = now.getHours();
-        const initialTab: RouteType = hour < 12 ? '출근' : '퇴근';
-        setActiveTab(initialTab);
-        setLocationIdx(getFavoriteRouteIndex(initialTab, prefRes.data ?? undefined));
+        // 즐겨찾기 거점 적용 (activeTab은 useState 초기값 사용)
+        setLocationIdx(getFavoriteRouteIndex(activeTab, prefRes.data ?? undefined));
       } catch (err) {
         console.error('[API 호출 에러] Error fetching route data or preferences:', err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchAll();
@@ -144,34 +141,28 @@ export default function EmployeeGPSApp() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        로딩 중...
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#fdfdfe] flex flex-col relative">
       <TopBar title="실시간 셔틀 확인" />
-      <div className="pt-16">
-        <SlideTab
-          locations={locations}
-          locationIdx={locationIdx}
-          onLocationChange={setLocationIdx}
-          tab={activeTab}
-          onTabChange={handleTabClick}
-          className="w-full"
-        />
-      </div>
-      <div className="flex-1 flex flex-col pb-24 min-h-0">
-        {isMapReady && selectedRoute ? (
+      {(!isMapReady) ? (
+        <div className="absolute left-0 right-0 top-14 bottom-16 flex items-center justify-center z-40 bg-white bg-opacity-80">
+          <CeniLoading />
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col pb-24 min-h-0 relative">
+          <div className="pt-16">
+            <SlideTab
+              locations={locations}
+              locationIdx={locationIdx}
+              onLocationChange={setLocationIdx}
+              tab={activeTab}
+              onTabChange={handleTabClick}
+              className="w-full"
+            />
+          </div>
           <KakaoMap route={selectedRoute} activeTab={activeTab} />
-        ) : (
-          <div>지도를 불러오는 중입니다...</div>
-        )}
-      </div>
+        </div>
+      )}
       <BottomBar />
     </div>
   );

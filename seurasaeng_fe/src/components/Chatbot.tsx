@@ -41,6 +41,54 @@ function mapApiToTimetable(apiData: { commute: ApiTimetableItem[]; offwork: ApiT
   };
 }
 
+// [1], [2], ... 패턴을 citations와 매칭하여 링크로 변환
+function injectCitationLinks(content: string, citations?: string[]) {
+  if (!citations || citations.length === 0) return content;
+  return content.replace(/\[(\d+)\]/g, (match, num) => {
+    const idx = parseInt(num, 10) - 1;
+    if (citations[idx]) {
+      return `[${num}](${citations[idx]})`;
+    }
+    return match;
+  });
+}
+
+// ReactMarkdown에서 링크를 새창으로 열도록 커스텀 컴포넌트 지정
+const markdownComponents = {
+  a: (props: any) => {
+    // 링크 텍스트가 숫자 하나(예: 1, 2, 3 등)일 때만 스타일 적용
+    if (/^\d+$/.test(props.children)) {
+      return (
+        <a
+          {...props}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            background: '#5382E0',
+            color: '#fff',
+            borderRadius: '0.6em',
+            fontSize: '0.75rem',
+            minWidth: '1.5em',
+            height: '1.5em',
+            lineHeight: '1.5em',
+            textAlign: 'center',
+            margin: '0 2px',
+            verticalAlign: 'middle',
+            textDecoration: 'none',
+            fontWeight: 600,
+            padding: '0 0.5em',
+          }}
+        >
+          {props.children}
+        </a>
+      );
+    }
+    // 그 외 링크는 기본 스타일
+    return <a {...props} target="_blank" rel="noopener noreferrer" />;
+  },
+};
+
 export default function Chatbot({ onClose }: { onClose: () => void }) {
   // 위치 & 리셋
   const [position, setPosition] = useState(DEFAULT_POSITION);
@@ -92,10 +140,21 @@ export default function Chatbot({ onClose }: { onClose: () => void }) {
 
   // 새 메시지 시작점으로 스크롤
   useEffect(() => {
-    if (!isLoading && messages.length > 0) {
+    if (messages.length > 0) {
       const idx = messages.length - 1;
       const el = messageRefs.current[idx];
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el && chatContainerRef.current) {
+        const container = chatContainerRef.current;
+  
+        // 정확한 상대 위치 계산
+        const offset = el.offsetTop - container.offsetTop;
+        const padding = 10;
+  
+        container.scrollTo({
+          top: offset - padding,
+          behavior: 'smooth'
+        });
+      }
     }
   }, [messages, isLoading]);
 
@@ -160,7 +219,9 @@ export default function Chatbot({ onClose }: { onClose: () => void }) {
       setMessages(m => [...m, {
         role:'assistant',
         content: found
-          ? `지금 기준으로 가장 빠른 **${found.type} 셔틀**은 ${found.time}에 ${found.spot}에서 출발합니다.`
+          ? found.type === '출근'
+            ? `가장 빠른 **출근**셔틀은 **${found.time}** **${found.spot}**에서 출발합니다.`
+            : `가장 빠른 **퇴근**셔틀은 **${found.time}** **${found.spot}** 행 셔틀입니다.`
           : '오늘 남은 셔틀이 없습니다.'
       }]);
       return;
@@ -174,25 +235,17 @@ export default function Chatbot({ onClose }: { onClose: () => void }) {
       setMessages(m=>[...m, { role:'user', content:message }, { role:'assistant', content:reply }]);
       return;
     }
-    // 배차 간격
-    if (message === '셔틀 배차 간격') {
-      const calc = (times: string[]) => {
-        if (times.length<2) return 'N/A';
-        const mins = times.map(t=>{const [h,m]=t.split(':').map(Number);return h*60+m;}).sort((a,b)=>a-b);
-        const diffs = mins.slice(1).map((v,i)=>v-mins[i]);
-        return Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length)+'분';
-      };
-      let reply = '**출근 셔틀 배차 간격**\n';
-      timetableData['출근'].forEach(i=>{
-        const ts = i.출발시간.map(o=>Object.values(o)[0]);
-        reply += `- ${i.거점}: ${calc(ts)}\n`;
+    // 소요 시간
+    if (message === '셔틀 소요 시간') {
+      let reply = '**출근 셔틀 소요 시간**\n';
+      timetableData['출근'].forEach(i => {
+        reply += `- ${i.거점}: ${i.소요시간}\n`;
       });
-      reply += '\n**퇴근 셔틀 배차 간격**\n';
-      timetableData['퇴근'].forEach(i=>{
-        const ts = i.출발시간.map(o=>Object.values(o)[0]);
-        reply += `- ${i.거점}: ${calc(ts)}\n`;
+      reply += '\n**퇴근 셔틀 소요 시간**\n';
+      timetableData['퇴근'].forEach(i => {
+        reply += `- ${i.거점}: ${i.소요시간}\n`;
       });
-      setMessages(m=>[...m, { role:'user', content:message }, { role:'assistant', content:reply }]);
+      setMessages(m => [...m, { role: 'user', content: message }, { role: 'assistant', content: reply }]);
       return;
     }
 
@@ -252,16 +305,22 @@ export default function Chatbot({ onClose }: { onClose: () => void }) {
             ref={el => { messageRefs.current[idx] = el; }}
             className={`flex ${message.role==='user'?'justify-end':''} ${idx===0?'':'mt-5'}`}
           >
-            {message.role==='assistant' && <img src="/ceni-face.webp" alt="CENI" className="h-7 mr-2 object-cover" />}
+            {message.role==='assistant' && <img src="/ceni-face.webp" alt="CENI" className="h-7 mr-2 object-contain" />}
             <div>
               <div className={`${message.role==='user'?'bg-[#5382E0] text-white rounded-xl rounded-tr-none':'bg-[#e6edfa] text-gray-900 rounded-xl rounded-tl-none'} px-4 py-2 text-sm max-w-[220px]`}>
-                <ReactMarkdown>{message.content}</ReactMarkdown>
+                <ReactMarkdown components={markdownComponents}>
+                  {
+                    message.role === 'assistant'
+                      ? injectCitationLinks(message.content, message.citations)
+                      : message.content
+                  }
+                </ReactMarkdown>
               </div>
               {idx===0 && (
                 <div className="flex flex-col gap-2 mt-2">
                   <button onClick={()=>handleButtonClick('가장 빠른 셔틀 출발 시간')} className="bg-white border border-blue-200 text-blue-700 rounded-lg px-3 py-3 text-sm hover:bg-blue-50">가장 빠른 셔틀 출발 시간</button>
                   <button onClick={()=>handleButtonClick('셔틀 정류장 위치')}      className="bg-white border border-blue-200 text-blue-700 rounded-lg px-3 py-3 text-sm hover:bg-blue-50">셔틀 정류장 위치</button>
-                  <button onClick={()=>handleButtonClick('셔틀 배차 간격')}      className="bg-white border border-blue-200 text-blue-700 rounded-lg px-3 py-3 text-sm hover:bg-blue-50">셔틀 배차 간격</button>
+                  <button onClick={()=>handleButtonClick('셔틀 소요 시간')}      className="bg-white border border-blue-200 text-blue-700 rounded-lg px-3 py-3 text-sm hover:bg-blue-50">셔틀 소요 시간</button>
                 </div>
               )}
             </div>

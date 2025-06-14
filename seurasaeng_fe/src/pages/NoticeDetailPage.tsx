@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import TopBar from '../components/TopBar';
 import apiClient from '../libs/axios';
+import CeniLoading from '../components/CeniLoading';
 
 export default function NoticeDetailPage() {
   const { id } = useParams();
@@ -24,7 +25,14 @@ export default function NoticeDetailPage() {
   }, [id]);
 
   if (loading) {
-    return <div className="text-center text-gray-400 py-20">로딩 중...</div>;
+    return (
+      <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16 relative">
+        <TopBar title="공지사항" />
+        <div className="absolute left-0 right-0 top-14 bottom-0 flex items-center justify-center z-40 bg-white bg-opacity-80">
+          <CeniLoading />
+        </div>
+      </div>
+    );
   }
   if (!notice) {
     return <div className="text-center text-gray-400 py-20">존재하지 않는 공지입니다.</div>;

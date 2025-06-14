@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import apiClient from '../libs/axios';
 import TopBar from '../components/TopBar';
 import axios from 'axios';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -60,10 +61,13 @@ export default function LoginPage() {
       <TopBar title="로그인" />
       <div className="w-full flex flex-col items-center">
         <h2 className="text-2xl font-bold text-center mb-4">로그인</h2>
-        <img
+        <OptimizedImage
           src="/ceni.webp"
           alt="캐릭터"
-          className="w-32 h-32 object-contain mb-6 mt-24"
+          width={128}
+          height={128}
+          className="mb-6 mt-24"
+          priority={true}
         />
         <form className="w-full max-w-xs flex flex-col gap-3 mt-12" onSubmit={handleSubmit}>
           <label className="text-sm font-normal text-black">이메일</label>
@@ -98,7 +102,16 @@ export default function LoginPage() {
             className={`w-full py-3 rounded-lg bg-[#5382E0] text-white text-base font-normal shadow hover:bg-blue-600 transition mt-8 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
             disabled={loading || !email || !password}
           >
-            {loading ? '로그인 중...' : '로그인'}
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin h-4 w-4 mr-1 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+              </span>
+            ) : (
+              '로그인'
+            )}
           </button>
         </form>
       </div>

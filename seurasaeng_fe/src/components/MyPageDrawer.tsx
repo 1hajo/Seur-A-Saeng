@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import type { MyPageDrawerProps } from '../types/ComponentTypes';
+import OptimizedImage from './OptimizedImage';
 
 const DRAG_CLOSE_THRESHOLD = 80; // px
 const MAX_OVERLAY_OPACITY = 0.18;
@@ -119,13 +120,22 @@ const MyPageDrawer: React.FC<MyPageDrawerProps> = ({ open, onClose, onDrag }) =>
           <div className="flex flex-col items-center mt-12 flex-1">
             <div className="flex justify-center items-center mb-2 border border-gray-100 rounded-full w-26 h-26">
               {profileImg ? (
-                <img
+                <OptimizedImage
                   src={profileImg}
                   alt="profile"
-                  className="w-20 h-20 object-cover rounded-full"
+                  width={80}
+                  height={80}
+                  className="object-cover rounded-full"
                 />
               ) : (
-                <img src="/ceni-face.webp" alt="기본 프로필" className="w-20 h-20 object-contain rounded-full" />
+                <OptimizedImage
+                  src="/ceni-face.webp"
+                  alt="기본 프로필"
+                  width={80}
+                  height={80}
+                  className="object-contain rounded-full"
+                  priority={true}
+                />
               )}
             </div>
             <div className="text-sm">{userName}</div>
