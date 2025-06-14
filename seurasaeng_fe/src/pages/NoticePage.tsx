@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
 import apiClient from '../libs/axios';
+import CeniLoading from '../components/CeniLoading';
 
 export default function NoticePage({ isAdmin = false }) {
   const navigate = useNavigate();
@@ -106,14 +107,18 @@ export default function NoticePage({ isAdmin = false }) {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-40">
+    <div className="min-h-screen bg-white pb-40 relative">
       {/* 상단바 */}
       <TopBar title={isAdmin ? "공지사항 관리" : "공지사항"} />
+      {/* 로딩 오버레이 (상단바/하단바 제외) */}
+      {loading && (
+        <div className="absolute left-0 right-0 top-14 bottom-16 flex items-center justify-center z-40 bg-white bg-opacity-80">
+          <CeniLoading />
+        </div>
+      )}
       {/* 공지 리스트 */}
       <div className="pt-14 flex-1 px-4">
-        {loading ? (
-          <div className="text-center text-gray-400 py-12">불러오는 중...</div>
-        ) : notices.length === 0 ? (
+        {!loading && notices.length === 0 ? (
           <div className="text-center text-gray-400 py-12">공지사항이 없습니다.</div>
         ) : null}
         {[...notices].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(notice => {

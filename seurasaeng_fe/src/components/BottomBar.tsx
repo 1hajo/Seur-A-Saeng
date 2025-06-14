@@ -20,15 +20,15 @@ export default function BottomBar({ transform, transition }: BottomBarProps) {
         ...(transition && { transition }),
       }}
     >
-      <button className="flex flex-col items-center justify-center" onClick={() => navigate('/realtime-shuttle')}>
+      <button className="flex flex-col items-center justify-center" onClick={() => navigate('/realtime-shuttle', { replace: true })}>
         <FaBusAlt size={28} color={isShuttle ? '#5382E0' : '#B0B0B0'} />
         <span className={`text-xs mt-0.5 ${isShuttle ? 'text-[#5382E0] font-bold' : 'text-[#B0B0B0]'}`}>셔틀</span>
       </button>
-      <button className="flex flex-col items-center justify-center" onClick={() => navigate('/main')}> 
+      <button className="flex flex-col items-center justify-center" onClick={() => navigate('/main', { replace: true })}> 
         <HiHome size={28} color={isHome ? '#5382E0' : '#B0B0B0'} />
         <span className={`text-xs mt-0.5 ${isHome ? 'text-[#5382E0] font-bold' : 'text-[#B0B0B0]'}`}>홈</span>
       </button>
-      <button className="flex flex-col items-center justify-center" onClick={() => navigate('/notice')}> 
+      <button className="flex flex-col items-center justify-center" onClick={() => navigate('/notice', { replace: true })}> 
         <HiClipboardDocumentList size={28} color={isNotice ? '#5382E0' : '#B0B0B0'} />
         <span className={`text-xs mt-0.5 ${isNotice ? 'text-[#5382E0] font-bold' : 'text-[#B0B0B0]'}`}>공지</span>
       </button>

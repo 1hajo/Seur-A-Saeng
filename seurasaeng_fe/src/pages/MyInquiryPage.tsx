@@ -116,7 +116,8 @@ export default function MyInquiryPage({ isAdmin = false }) {
                       {(() => {
                         const dateObj = new Date(inquiry.created_at);
                         if (isNaN(dateObj.getTime())) return inquiry.created_at;
-                        return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+                        const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
+                        return `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
                       })()}
                     </div>
                     {getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기') && (
@@ -145,7 +146,8 @@ export default function MyInquiryPage({ isAdmin = false }) {
                         {(() => {
                           const dateObj = new Date(inquiry.created_at);
                           if (isNaN(dateObj.getTime())) return inquiry.created_at;
-                          return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+                          const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
+                          return `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
                         })()}
                       </div>
                       {getStatusBadge(inquiry.answer_status ? '답변완료' : '답변대기') && (

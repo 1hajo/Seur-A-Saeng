@@ -3,6 +3,7 @@ import apiClient from '../libs/axios';
 import SlideTab from '../components/SlideTab';
 import TopBar from '../components/TopBar';
 import type { TimetableItem, ShuttleScheduleJson } from '../types/ShuttleTypes';
+import CeniLoading from '../components/CeniLoading';
 
 // 도착 시간 계산 함수
 function getArrivalTime(departure: string, duration: string): string {
@@ -93,7 +94,10 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
   // 수정 모드 취소/완료를 위한 원본 백업
   const [originalTimetableData, setOriginalTimetableData] = useState<ShuttleScheduleJson | null>(null);
 
-  const [tab, setTab] = useState<'출근' | '퇴근'>("출근");
+  const [tab, setTab] = useState<'출근' | '퇴근'>(() => {
+    const hour = new Date().getHours();
+    return hour < 12 ? '출근' : '퇴근';
+  });
 
   // Filter timetable for selected location and type
   const timetable: TimetableItem[] = timetableData && timetableData[tab]
@@ -207,25 +211,33 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
   const isResetEnabled = isEditMode && originalTimetableData && timetableData && JSON.stringify(timetableData) !== JSON.stringify(originalTimetableData);
 
   return (
-    <div className="bg-white pb-16" style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}>
+    <div className="bg-white pb-16 min-h-screen relative">
       {/* 상단바 */}
       <TopBar 
         title={isAdmin ? "시간표 관리" : "셔틀 시간표"}
       />
+      {/* 로딩 오버레이 (상단바/하단바 제외) */}
+      {!timetableData && (
+        <div className="absolute left-0 right-0 top-14 bottom-16 flex items-center justify-center z-40 bg-white bg-opacity-80">
+          <CeniLoading />
+        </div>
+      )}
       {/* SlideTab 컴포넌트로 대체 */}
       <div className="pt-16">
-        <SlideTab
-          locations={locations}
-          locationIdx={locationIdx}
-          onLocationChange={setLocationIdx}
-          tab={tab}
-          onTabChange={setTab}
-          className="w-full"
-        />
+        {timetableData && (
+          <SlideTab
+            locations={locations}
+            locationIdx={locationIdx}
+            onLocationChange={setLocationIdx}
+            tab={tab}
+            onTabChange={setTab}
+            className="w-full"
+          />
+        )}
       </div>
       {/* 시간표 */}
       <div className="px-4">
-        {timetable.length === 0 ? (
+        {timetableData && (timetable.length === 0 ? (
           <div className="text-center text-gray-400 py-8">해당 노선의 시간표가 없습니다.</div>
         ) : (
           timetable.map((item, idx) => (
@@ -438,10 +450,10 @@ export default function ShuttleTimetablePage({ isAdmin = false }) {
               })()}
             </div>
           ))
-        )}
+        ))}
       </div>
       {/* 하단 고정 완료/취소 바 (수정 모드에서만) */}
-      {isEditMode && (
+      {isEditMode && timetableData && (
         <div className="bottom-0 left-0 right-0 z-30 bg-white flex h-16 px-4 gap-3 items-center justify-center">
           <button
             className={

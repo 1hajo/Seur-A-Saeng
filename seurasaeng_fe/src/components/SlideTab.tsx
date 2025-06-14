@@ -25,6 +25,8 @@ export default function SlideTab({
   const selectedBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
+    if (locationIdx == -1) return;
+    
     const btn = selectedBtnRefs.current[locationIdx];
     if (btn && locationTabRef.current) {
       btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });

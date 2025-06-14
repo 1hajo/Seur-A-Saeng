@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+
   return (
     <div className="flex flex-col justify-between items-center bg-[#fdfdfe] pt-12 pb-8">
       <div className="flex flex-col items-center w-full">
@@ -10,10 +12,13 @@ export default function LandingPage() {
           슬기로운<br />
           <span className="tracking-wider">아이티센 생활<sup className="text-xs align-super">+</sup></span>
         </h1>
-        <img
+        <OptimizedImage
           src="/ceni-bus-blue.webp"
           alt="셔틀버스"
-          className="w-40 h-auto mx-auto my-4 drop-shadow-md mt-32"
+          width={160}
+          height={160}
+          className="mx-auto my-4 mt-32 drop-shadow-md"
+          priority={true}
         />
         <div className="text-center text-base text-gray-500 mb-2 mt-12">-셔틀편-</div>
       </div>
