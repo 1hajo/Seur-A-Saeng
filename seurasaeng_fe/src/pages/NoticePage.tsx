@@ -138,8 +138,7 @@ export default function NoticePage({ isAdmin = false }) {
                     {(() => {
                       const dateObj = new Date(notice.created_at);
                       if (isNaN(dateObj.getTime())) return notice.created_at;
-                      const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
-                      return `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
+                      return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
                     })()}
                   </div>
                   <div className="text-xs text-gray-600 truncate select-none">{notice.content}</div>
@@ -185,8 +184,7 @@ export default function NoticePage({ isAdmin = false }) {
                   {(() => {
                     const dateObj = new Date(notice.created_at);
                     if (isNaN(dateObj.getTime())) return notice.created_at;
-                    const kst = new Date(dateObj.getTime() + 9 * 60 * 60 * 1000);
-                    return `${kst.getFullYear()}.${(kst.getMonth()+1).toString().padStart(2,'0')}.${kst.getDate().toString().padStart(2,'0')} ${kst.getHours().toString().padStart(2,'0')}:${kst.getMinutes().toString().padStart(2,'0')}`;
+                    return `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
                   })()}
                 </div>
                 <div className="text-xs text-gray-600 truncate select-none">{notice.content}</div>
