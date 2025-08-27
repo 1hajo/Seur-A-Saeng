@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Redis 서비스
+  # Redis 서비스 
   redis:
     image: redis:6.0
     container_name: seurasaeng_redis
