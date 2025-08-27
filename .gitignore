@@ -1,0 +1,7 @@
+.DS_Store
+**/.DS_Store
+*.tar.gz
+*-image.tar.gz
+.vscode/
+logs/
+*.log
