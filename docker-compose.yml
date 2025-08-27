@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Redis 서비스 (기존과 동일)
+  redis:
+    image: redis:6.0
+    container_name: seurasaeng_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # 백엔드 서비스
+  backend:
+    image: seuraseung-backend:latest
+    container_name: seurasaeng_backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 프론트엔드 서비스 (Nginx + React)
+  frontend:
+    image: seuraseung-frontend:latest
+    container_name: seurasaeng_frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl/certs:ro  # SSL 인증서용 (필요시)
+
+# 볼륨 설정
+volumes:
+  redis_data:
