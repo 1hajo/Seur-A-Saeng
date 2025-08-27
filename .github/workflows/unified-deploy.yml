@@ -105,7 +105,7 @@ jobs:
           AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
           AWS_REGION=ap-northeast-2
-          AWS_BUCKET=profile-qrcode
+          AWS_BUCKET=itcengroup-bus-app
           ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
           JWT_KEY=${{ secrets.JWT_KEY }}
           REDIS_HOST=redis
@@ -117,7 +117,7 @@ jobs:
           spring.cloud.aws.credentials.access-key=${{ secrets.AWS_ACCESS_KEY }}
           spring.cloud.aws.credentials.secret-key=${{ secrets.AWS_SECRET_KEY }}
           spring.cloud.aws.region.static=ap-northeast-2
-          spring.cloud.aws.s3.bucket=profile-qrcode
+          spring.cloud.aws.s3.bucket=itcengroup-bus-app
           EOF
           
           # 기존 컨테이너 정지 및 새로 시작
